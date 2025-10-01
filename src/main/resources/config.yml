@@ -1,0 +1,63 @@
+autosummon: true
+starting-level: 5
+species:
+  ember_spark:
+    name: Ember Spark
+    element: FIRE
+    model: BLAZE_ROD
+    description: A fiery sprite that scorches foes with blazing arcs.
+    base-stats:
+      health: 48
+      attack: 8
+      defense: 4
+      magic: 7
+      speed: 6
+    talents:
+      - arcane_burst
+      - guardian_shell
+      - elemental_ward
+  tidal_sprite:
+    name: Tidal Sprite
+    element: WATER
+    model: PRISMARINE_CRYSTALS
+    description: A playful water elemental that mends allies mid-fight.
+    base-stats:
+      health: 54
+      attack: 6
+      defense: 6
+      magic: 8
+      speed: 5
+    talents:
+      - healing_aura
+      - elemental_ward
+      - essence_harvester
+  verdant_nymph:
+    name: Verdant Nymph
+    element: NATURE
+    model: FLOWERING_AZALEA
+    description: Loves tending gardens and shielding allies with living vines.
+    base-stats:
+      health: 52
+      attack: 5
+      defense: 7
+      magic: 7
+      speed: 5
+    talents:
+      - healing_aura
+      - verdant_caretaker
+      - guardian_shell
+  storm_charger:
+    name: Storm Charger
+    element: STORM
+    model: AMETHYST_SHARD
+    description: A thunderborn pet that darts between foes gathering loot.
+    base-stats:
+      health: 46
+      attack: 9
+      defense: 5
+      magic: 6
+      speed: 8
+    talents:
+      - arcane_burst
+      - essence_harvester
+      - elemental_ward
