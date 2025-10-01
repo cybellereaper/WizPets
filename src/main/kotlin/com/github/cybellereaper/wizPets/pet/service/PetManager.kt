@@ -132,17 +132,22 @@ class PetManager(
         val owner = (event.damager as? Player) ?: return
         val pet = summonedPet[owner.uniqueId] ?: return
         val target = event.entity as? Monster ?: return
+
+        val prePetDamage = event.damage
         val stats = pet.investments.toSheet(pet.species.statSheet).atLevel(pet.level)
         val elementMultiplier = ELEMENT_WEAKNESSES[pet.species.element]?.getOrDefault(elementOf(target), 1.0) ?: 1.0
-        val damage = stats.attack * elementMultiplier
-        target.damage(damage, owner)
+        val petDamage = stats.attack * elementMultiplier
+
+        event.damage = prePetDamage + petDamage
         target.noDamageTicks = 0
-        target.fireTicks = if (pet.species.element == Element.FLAME) 60 else target.fireTicks
-        if (pet.damage(event.damage)) {
+        if (pet.species.element == Element.FLAME) {
+            target.fireTicks = max(target.fireTicks, 60)
+        }
+
+        if (pet.damage(prePetDamage)) {
             owner.sendMessage("§c${pet.nickname} needs to recover before fighting again.")
             dismiss(owner)
         }
-        event.isCancelled = true
     }
 
     private fun defaultInvestments(): StatInvestments = StatInvestments(
