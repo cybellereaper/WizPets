@@ -1,4 +1,8 @@
 name: WizPets
-version: '0.0.1'
+version: '${version}'
 main: com.github.cybellereaper.wizPets.WizPets
 api-version: '1.21'
+commands:
+  wizpet:
+    description: Manage your magical companion.
+    usage: /<command> [summon|dismiss|stats|talents]
