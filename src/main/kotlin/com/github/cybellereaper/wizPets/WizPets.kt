@@ -8,11 +8,19 @@ import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
 
 class WizPets : JavaPlugin() {
+    lateinit var particleController: ParticleController
+        private set
+    lateinit var scriptManager: PetScriptManager
+        private set
     lateinit var petManager: PetManager
         private set
 
     override fun onEnable() {
         saveDefaultConfig()
+        particleController = ParticleController(this)
+        scriptManager = PetScriptManager(this, particleController)
+        val scriptsLoaded = scriptManager.reloadScripts()
+        logger.info("Loaded $scriptsLoaded pet behavior scripts")
         petManager = PetManager(this)
         val petCommand = PetCommand(petManager)
         getCommand("wizpet")?.setExecutor(petCommand)
@@ -40,10 +48,19 @@ private class PetCommand(private val petManager: PetManager) : TabExecutor {
         }
 
         if (args.isEmpty()) {
-            sender.sendMessage("§e/wizpet summon §7- Summon your pet")
+            sender.sendMessage("§e/wizpet summon §7- Summon or respawn your pet")
             sender.sendMessage("§e/wizpet dismiss §7- Dismiss your pet")
             sender.sendMessage("§e/wizpet stats §7- View pet statistics")
             sender.sendMessage("§e/wizpet talents §7- View pet talents")
+            sender.sendMessage("§e/wizpet mount §7- Ride your pet")
+            sender.sendMessage("§e/wizpet dismount §7- Stop riding your pet")
+            sender.sendMessage("§e/wizpet fly §7- Take to the skies with your pet")
+            sender.sendMessage("§e/wizpet land §7- Land safely and end flight")
+            sender.sendMessage("§e/wizpet breed <player> §7- Breed your pet with another player's")
+            sender.sendMessage("§e/wizpet debug §7- Show stored pet data")
+            sender.sendMessage("§e/wizpet script list §7- Show available behavior scripts")
+            sender.sendMessage("§e/wizpet script set <name> §7- Apply a behavior script to your pet")
+            sender.sendMessage("§e/wizpet script reload §7- Reload Kotlin scripts from disk")
             return true
         }
 
@@ -78,6 +95,70 @@ private class PetCommand(private val petManager: PetManager) : TabExecutor {
                 true
             }
 
+            "mount" -> {
+                petManager.mountPet(sender)
+                true
+            }
+
+            "dismount" -> {
+                petManager.dismountPet(sender)
+                true
+            }
+
+            "fly" -> {
+                petManager.enableFlight(sender)
+                true
+            }
+
+            "land" -> {
+                petManager.disableFlight(sender)
+                true
+            }
+
+            "breed" -> {
+                if (args.size < 2) {
+                    sender.sendMessage("§cUsage: /wizpet breed <player>")
+                } else {
+                    petManager.breedPets(sender, args[1])
+                }
+                true
+            }
+
+            "debug" -> {
+                petManager.showDebug(sender)
+                true
+            }
+
+            "script" -> {
+                if (args.size == 1) {
+                    sender.sendMessage("§cUsage: /wizpet script <list|set <name>|reload>")
+                } else {
+                    when (args[1].lowercase()) {
+                        "list" -> {
+                            val scripts = petManager.availableScripts()
+                            if (scripts.isEmpty()) {
+                                sender.sendMessage("§eNo scripts are currently loaded.")
+                            } else {
+                                sender.sendMessage("§aLoaded pet scripts: §f${scripts.joinToString(", ")}")
+                            }
+                        }
+
+                        "reload" -> petManager.reloadScripts(sender)
+
+                        "set" -> {
+                            if (args.size < 3) {
+                                sender.sendMessage("§cUsage: /wizpet script set <name>")
+                            } else {
+                                petManager.assignBehavior(sender, args[2])
+                            }
+                        }
+
+                        else -> petManager.assignBehavior(sender, args[1])
+                    }
+                }
+                true
+            }
+
             else -> false
         }
     }
@@ -89,8 +170,39 @@ private class PetCommand(private val petManager: PetManager) : TabExecutor {
         args: Array<out String>
     ): MutableList<String> {
         if (args.size == 1) {
-            return mutableListOf("summon", "dismiss", "stats", "talents")
+            return mutableListOf(
+                "summon",
+                "dismiss",
+                "stats",
+                "talents",
+                "mount",
+                "dismount",
+                "fly",
+                "land",
+                "breed",
+                "debug",
+                "script"
+            )
                 .filter { it.startsWith(args[0], ignoreCase = true) }
+                .toMutableList()
+        }
+
+        if (args.size == 2 && args[0].equals("breed", ignoreCase = true)) {
+            return Bukkit.getOnlinePlayers()
+                .filter { it.name.startsWith(args[1], ignoreCase = true) }
+                .map { it.name }
+                .toMutableList()
+        }
+
+        if (args.size == 2 && args[0].equals("script", ignoreCase = true)) {
+            return mutableListOf("list", "reload", "set")
+                .filter { it.startsWith(args[1], ignoreCase = true) }
+                .toMutableList()
+        }
+
+        if (args.size == 3 && args[0].equals("script", ignoreCase = true) && args[1].equals("set", ignoreCase = true)) {
+            return petManager.availableScripts()
+                .filter { it.startsWith(args[2], ignoreCase = true) }
                 .toMutableList()
         }
 
