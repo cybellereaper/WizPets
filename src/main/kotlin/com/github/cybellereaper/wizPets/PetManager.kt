@@ -5,6 +5,7 @@ import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Particle
+import org.bukkit.Sound
 import org.bukkit.attribute.Attribute
 import org.bukkit.block.Block
 import org.bukkit.block.data.Ageable
@@ -31,6 +32,7 @@ import java.util.Locale
 import java.util.UUID
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.random.Random
 
 class PetManager(private val plugin: WizPets) : Listener {
@@ -39,6 +41,14 @@ class PetManager(private val plugin: WizPets) : Listener {
     private val profiles = profileStore.loadProfiles()
     private val activePets = mutableMapOf<Player, Pet>()
     private val farmConfigSessions = mutableMapOf<UUID, FarmConfigSession>()
+    val battleManager = PetBattleManager(plugin)
+    private val wildSpawner = WildPetSpawner(plugin)
+    private val hatcheryTask: BukkitTask
+
+    init {
+        wildSpawner.start()
+        hatcheryTask = Bukkit.getScheduler().runTaskTimer(plugin, { processHatchery() }, 20L * 15, 20L * 15)
+    }
 
     fun capturePet(player: Player, speciesId: String, nickname: String?): CapturedPet? {
         val species = PetSpeciesRegistry.getSpecies(speciesId)
@@ -172,6 +182,141 @@ class PetManager(private val plugin: WizPets) : Listener {
         player.sendMessage("§a${pet.captured.nickname} resumes following you.")
     }
 
+    fun beginIncubation(player: Player, firstNickname: String, secondNickname: String, count: Int) {
+        val profile = getProfile(player.uniqueId)
+        val parentA = profile.findByNickname(firstNickname)
+        val parentB = profile.findByNickname(secondNickname)
+        if (parentA == null || parentB == null) {
+            player.sendMessage("§cYou must choose two of your pets to incubate together.")
+            return
+        }
+        val actualCount = count.coerceIn(1, 5)
+        val incubationSeconds = plugin.config.getInt("incubation-seconds", 120)
+        val readyAt = System.currentTimeMillis() + incubationSeconds * 1000L
+        repeat(actualCount) {
+            profile.eggs += IncubatingEgg(
+                id = UUID.randomUUID(),
+                speciesId = listOf(parentA.speciesId, parentB.speciesId).random(random),
+                parentIds = listOf(parentA.id, parentB.id),
+                readyAt = readyAt
+            )
+        }
+        saveProfiles()
+        player.playSound(player.location, Sound.ENTITY_TURTLE_EGG_CRACK, 0.8f, 1.2f)
+        player.sendMessage("§dYour pets cuddle together, nurturing $actualCount egg${if (actualCount > 1) "s" else ""}! They'll hatch together soon.")
+    }
+
+    fun listEggs(player: Player) {
+        val profile = getProfile(player.uniqueId)
+        if (profile.eggs.isEmpty()) {
+            player.sendMessage("§7You have no eggs incubating right now.")
+            return
+        }
+        val now = System.currentTimeMillis()
+        player.sendMessage("§dIncubating Eggs:")
+        profile.eggs.sortedBy { it.readyAt }.forEach { egg ->
+            val species = PetSpeciesRegistry.getSpecies(egg.speciesId)
+            val seconds = ((egg.readyAt - now) / 1000.0).coerceAtLeast(0.0)
+            val remaining = if (seconds <= 0.0) "Ready" else "${seconds.roundToInt()}s"
+            player.sendMessage("§b${species?.displayName ?: egg.speciesId} §7- $remaining")
+        }
+    }
+
+    fun hatchReadyEggs(player: Player, manual: Boolean = true): Boolean {
+        val profile = getProfile(player.uniqueId)
+        val now = System.currentTimeMillis()
+        val ready = profile.eggs.filter { it.readyAt <= now }
+        if (ready.isEmpty()) {
+            if (manual) {
+                player.sendMessage("§cNone of your eggs are ready to hatch yet.")
+            }
+            return false
+        }
+        val hatched = hatchEggBatch(player, profile, ready)
+        if (hatched.isEmpty()) return false
+        val message = if (hatched.size > 1) {
+            "§a${hatched.size} eggs hatch together in a burst of magic!"
+        } else {
+            "§a${hatched.first().nickname} hatches in your hands!"
+        }
+        player.sendMessage(message)
+        if (profile.activePetId == null && hatched.isNotEmpty()) {
+            profile.activePetId = hatched.first().id
+            spawnActivePet(player)
+        } else {
+            saveProfiles()
+        }
+        return true
+    }
+
+    private fun hatchEggBatch(player: Player, profile: TamerProfile, eggs: List<IncubatingEgg>): List<CapturedPet> {
+        if (eggs.isEmpty()) return emptyList()
+        val hatched = mutableListOf<CapturedPet>()
+        val toRemove = eggs.map { it.id }.toSet()
+        eggs.forEach { egg ->
+            val species = PetSpeciesRegistry.getSpecies(egg.speciesId) ?: return@forEach
+            val parents = egg.parentIds.mapNotNull { profile.pets[it] }
+            val evAverage = if (parents.isNotEmpty()) {
+                parents.map { it.evs }.reduce { acc, set -> acc + set } / parents.size.toDouble()
+            } else {
+                StatSet.randomEV(random)
+            }
+            val ivAverage = if (parents.isNotEmpty()) {
+                parents.map { it.ivs }.reduce { acc, set -> acc + set } / parents.size.toDouble()
+            } else {
+                StatSet.randomIV(random)
+            }
+            val bonus = StatSet.randomIV(random).scaled(0.25)
+            val evs = evAverage
+            val ivs = StatSet(
+                health = ivAverage.health + bonus.health,
+                attack = ivAverage.attack + bonus.attack,
+                defense = ivAverage.defense + bonus.defense,
+                magic = ivAverage.magic + bonus.magic,
+                speed = ivAverage.speed + bonus.speed
+            )
+            val level = parents.takeIf { it.isNotEmpty() }
+                ?.map { it.level }
+                ?.average()
+                ?.roundToInt()
+                ?.coerceAtLeast(1)
+                ?: plugin.config.getInt("starting-level", 5)
+            val nickname = resolveNickname(profile, species.displayName)
+            val talents = TalentRegistry.rollTalents(random, species, count = 3)
+            val captured = CapturedPet(
+                id = UUID.randomUUID(),
+                speciesId = species.id,
+                nickname = nickname,
+                level = level,
+                experience = 0,
+                evs = evs,
+                ivs = ivs,
+                talentIds = talents.toMutableList(),
+                farmTargets = mutableSetOf()
+            )
+            profile.pets[captured.id] = captured
+            hatched += captured
+        }
+        profile.eggs.removeIf { it.id in toRemove }
+        saveProfiles()
+        hatched.forEach {
+            player.sendMessage("§b${it.nickname} (§d${PetSpeciesRegistry.getSpecies(it.speciesId)?.displayName ?: it.speciesId}§b) joins your team!")
+        }
+        player.playSound(player.location, Sound.ENTITY_ALLAY_AMBIENT_WITHOUT_ITEM, 0.8f, 1.25f)
+        return hatched
+    }
+
+    private fun processHatchery() {
+        val now = System.currentTimeMillis()
+        profiles.forEach { (uuid, profile) ->
+            if (profile.eggs.none { it.readyAt <= now }) return@forEach
+            val player = Bukkit.getPlayer(uuid)
+            if (player != null && player.isOnline) {
+                hatchReadyEggs(player, manual = false)
+            }
+        }
+    }
+
     fun openCropConfigurator(player: Player) {
         val pet = getActivePet(player)
         val captured = pet?.captured
@@ -187,7 +332,7 @@ class PetManager(private val plugin: WizPets) : Listener {
         player.sendMessage("§7Place a crop in the left slot to toggle harvesting. Take the result to confirm.")
     }
 
-    fun getProfile(uuid: UUID): TamerProfile = profiles.computeIfAbsent(uuid) { TamerProfile(mutableMapOf(), null) }
+    fun getProfile(uuid: UUID): TamerProfile = profiles.computeIfAbsent(uuid) { TamerProfile(mutableMapOf(), null, mutableListOf()) }
 
     fun removeAllPets() {
         activePets.values.forEach { it.remove() }
@@ -198,6 +343,9 @@ class PetManager(private val plugin: WizPets) : Listener {
     fun shutdown() {
         activePets.values.forEach { it.remove() }
         activePets.clear()
+        hatcheryTask.cancel()
+        wildSpawner.shutdown()
+        battleManager.shutdown()
         profileStore.saveProfiles(profiles)
     }
 
@@ -239,8 +387,8 @@ class PetManager(private val plugin: WizPets) : Listener {
         entity.isInvulnerable = true
         entity.customName = species.displayName
         entity.isCustomNameVisible = true
-        entity.setAI(false)
-        entity.setGravity(false)
+        entity.setAI(true)
+        entity.setRemoveWhenFarAway(false)
         entity.equipment?.helmet = ItemStack(species.modelItem)
         if (entity.type == EntityType.ARMOR_STAND) {
             val stand = entity as org.bukkit.entity.ArmorStand
@@ -251,7 +399,7 @@ class PetManager(private val plugin: WizPets) : Listener {
         return entity
     }
 
-    private fun saveProfiles() {
+    fun saveProfiles() {
         profileStore.saveProfiles(profiles)
     }
 
@@ -358,6 +506,7 @@ class Pet(
     private var mode: PetMode = PetMode.FOLLOW
     private var anchor: Location? = null
     private val farmAgent = FarmAgent(plugin)
+    private var interactionCooldown = 0
 
     val displayName: String
         get() = "${owner.name}'s ${captured.nickname}"
@@ -397,6 +546,82 @@ class Pet(
 
     fun hasTalent(id: String): Boolean = captured.talentIds.any { it.equals(id, ignoreCase = true) }
 
+    fun getMaxHealth(): Double = getStat(StatType.HEALTH)
+
+    fun getTalents(): List<Talent> = talents
+
+    fun randomBattleMove(random: Random): BattleMove {
+        val moves = mutableListOf(
+            BattleMove(
+                id = "spirit_strike",
+                name = "Spirit Strike",
+                description = "A swift physical blow.",
+                kind = MoveKind.PHYSICAL,
+                power = 0.85
+            ),
+            BattleMove(
+                id = "elemental_pulse",
+                name = "Elemental Pulse",
+                description = "A burst of elemental magic.",
+                kind = MoveKind.MAGICAL,
+                power = 1.0
+            )
+        )
+        if (hasTalent("arcane_burst")) {
+            moves += BattleMove(
+                id = "arcane_barrage",
+                name = "Arcane Barrage",
+                description = "Overwhelms foes with surging arcana.",
+                kind = MoveKind.MAGICAL,
+                power = 1.35
+            )
+        }
+        if (hasTalent("healing_aura")) {
+            moves += BattleMove(
+                id = "rejuvenating_hymn",
+                name = "Rejuvenating Hymn",
+                description = "Mends wounds mid-battle.",
+                kind = MoveKind.SUPPORT,
+                supportAction = { participant ->
+                    participant.heal(getStat(StatType.MAGIC) * 0.8)
+                    owner.sendMessage("§a${captured.nickname} hums a soothing hymn.")
+                }
+            )
+        }
+        if (hasTalent("guardian_shell")) {
+            moves += BattleMove(
+                id = "stellar_guard",
+                name = "Stellar Guard",
+                description = "Fortifies itself with protective stardust.",
+                kind = MoveKind.SUPPORT,
+                supportAction = { participant ->
+                    participant.heal(getStat(StatType.DEFENSE) * 0.4)
+                }
+            )
+        }
+        if (hasTalent("essence_harvester")) {
+            moves += BattleMove(
+                id = "siphon_lash",
+                name = "Siphon Lash",
+                description = "A draining strike that siphons energy.",
+                kind = MoveKind.PHYSICAL,
+                power = 1.15
+            )
+        }
+        if (hasTalent("verdant_caretaker")) {
+            moves += BattleMove(
+                id = "blooming_shield",
+                name = "Blooming Shield",
+                description = "Calls vines to protect itself.",
+                kind = MoveKind.SUPPORT,
+                supportAction = { participant ->
+                    participant.heal(getStat(StatType.MAGIC) * 0.5)
+                }
+            )
+        }
+        return moves.random(random)
+    }
+
     private fun tick() {
         if (!owner.isOnline || owner.isDead) {
             remove()
@@ -414,6 +639,7 @@ class Pet(
         } else {
             entity.teleport(targetLocation)
         }
+        handleAmbientInteractions()
         talents.forEach { it.tick(this) }
         if (attackCooldown > 0) {
             attackCooldown--
@@ -422,6 +648,31 @@ class Pet(
         handleCombat()
         handleCollection()
         farmAgent.tick(this)
+    }
+
+    private fun handleAmbientInteractions() {
+        if (interactionCooldown > 0) {
+            interactionCooldown--
+            return
+        }
+        if (random.nextDouble() < 0.2) {
+            interactionCooldown = 5
+            val block = entity.location.clone().subtract(0.0, 1.0, 0.0).block
+            when (block.type) {
+                Material.WATER, Material.BUBBLE_COLUMN -> {
+                    entity.world.spawnParticle(Particle.BUBBLE, entity.location, 8, 0.3, 0.3, 0.3, 0.01)
+                }
+                Material.GRASS_BLOCK, Material.MOSS_BLOCK -> {
+                    entity.world.spawnParticle(Particle.VILLAGER_HAPPY, entity.location.add(0.0, 0.6, 0.0), 6, 0.2, 0.3, 0.2, 0.0)
+                }
+                else -> {
+                    entity.world.spawnParticle(Particle.END_ROD, entity.location.add(0.0, 0.6, 0.0), 4, 0.2, 0.2, 0.2, 0.0)
+                }
+            }
+            entity.swingMainHand()
+            val pitch = (0.9 + random.nextDouble() * 0.2).toFloat()
+            owner.playSound(entity.location, Sound.ENTITY_ALLAY_AMBIENT_WITH_ITEM, 0.4f, pitch)
+        }
     }
 
     private fun handleHealing() {
@@ -515,11 +766,29 @@ data class CapturedPet(
             true
         }
     }
+
+    fun gainExperience(amount: Int) {
+        experience = max(0, experience + amount)
+        while (experience >= experienceNeededForNextLevel()) {
+            experience -= experienceNeededForNextLevel()
+            level++
+        }
+    }
+
+    private fun experienceNeededForNextLevel(): Int = 60 + level * 25
 }
+
+data class IncubatingEgg(
+    val id: UUID,
+    val speciesId: String,
+    val parentIds: List<UUID>,
+    val readyAt: Long
+)
 
 data class TamerProfile(
     val pets: MutableMap<UUID, CapturedPet>,
     var activePetId: UUID?,
+    val eggs: MutableList<IncubatingEgg>
 ) {
     fun getActivePet(): CapturedPet? = activePetId?.let { pets[it] }
 
@@ -555,8 +824,18 @@ private class ProfileStore(private val plugin: WizPets) {
                 val farmTargets = petSection.getStringList("farm-crops").map { it.uppercase(Locale.US) }.toMutableSet()
                 pets[petId] = CapturedPet(petId, speciesId, nickname, level, experience, evs, ivs, talents, farmTargets)
             }
+            val eggsSection = profileSection.getConfigurationSection("eggs")
+            val eggs = mutableListOf<IncubatingEgg>()
+            eggsSection?.getKeys(false)?.forEach { eggKey ->
+                val eggId = runCatching { UUID.fromString(eggKey) }.getOrNull() ?: return@forEach
+                val eggData = eggsSection.getConfigurationSection(eggKey) ?: return@forEach
+                val speciesId = eggData.getString("species") ?: return@forEach
+                val parents = eggData.getStringList("parents").mapNotNull { runCatching { UUID.fromString(it) }.getOrNull() }
+                val readyAt = eggData.getLong("ready-at", System.currentTimeMillis())
+                eggs += IncubatingEgg(eggId, speciesId, parents, readyAt)
+            }
             val activePet = profileSection.getString("active")?.let { runCatching { UUID.fromString(it) }.getOrNull() }
-            map[uuid] = TamerProfile(pets, activePet)
+            map[uuid] = TamerProfile(pets, activePet, eggs)
         }
         return map
     }
@@ -578,6 +857,13 @@ private class ProfileStore(private val plugin: WizPets) {
                 petSection.set("ivs", pet.ivs.toMap())
                 petSection.set("talents", pet.talentIds)
                 petSection.set("farm-crops", pet.farmTargets.toList())
+            }
+            val eggsSection = profileSection.createSection("eggs")
+            profile.eggs.forEach { egg ->
+                val eggSection = eggsSection.createSection(egg.id.toString())
+                eggSection.set("species", egg.speciesId)
+                eggSection.set("parents", egg.parentIds.map { it.toString() })
+                eggSection.set("ready-at", egg.readyAt)
             }
         }
         file.parentFile.mkdirs()

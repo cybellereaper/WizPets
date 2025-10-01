@@ -20,6 +20,7 @@ class WizPets : JavaPlugin() {
         getCommand("wizpet")?.setExecutor(petCommand)
         getCommand("wizpet")?.tabCompleter = petCommand
         server.pluginManager.registerEvents(petManager, this)
+        server.pluginManager.registerEvents(petManager.battleManager, this)
         logger.info("WizPets enabled with ${Bukkit.getOnlinePlayers().size} players online")
         Bukkit.getOnlinePlayers().forEach { petManager.handleJoin(it) }
     }
@@ -49,6 +50,10 @@ private class PetCommand(private val plugin: WizPets, private val petManager: Pe
             "release" -> handleRelease(sender, args)
             "rename" -> handleRename(sender, args)
             "crops" -> handleCrops(sender)
+            "incubate" -> handleIncubate(sender, args)
+            "eggs" -> handleEggs(sender)
+            "hatch" -> handleHatch(sender)
+            "battle" -> handleBattle(sender, args)
             "admin" -> handleAdmin(sender, args)
             else -> {
                 sendHelp(sender)
@@ -113,6 +118,48 @@ private class PetCommand(private val plugin: WizPets, private val petManager: Pe
     private fun handleFollow(sender: CommandSender): Boolean {
         val player = sender.ensurePlayer() ?: return true
         petManager.commandFollow(player)
+        return true
+    }
+
+    private fun handleIncubate(sender: CommandSender, args: Array<out String>): Boolean {
+        val player = sender.ensurePlayer() ?: return true
+        if (args.size < 3) {
+            player.sendMessage("§cUsage: /wizpet incubate <pet one> <pet two> [count]")
+            return true
+        }
+        val count = args.getOrNull(3)?.toIntOrNull() ?: 1
+        petManager.beginIncubation(player, args[1], args[2], count)
+        return true
+    }
+
+    private fun handleEggs(sender: CommandSender): Boolean {
+        val player = sender.ensurePlayer() ?: return true
+        petManager.listEggs(player)
+        return true
+    }
+
+    private fun handleHatch(sender: CommandSender): Boolean {
+        val player = sender.ensurePlayer() ?: return true
+        petManager.hatchReadyEggs(player)
+        return true
+    }
+
+    private fun handleBattle(sender: CommandSender, args: Array<out String>): Boolean {
+        val player = sender.ensurePlayer() ?: return true
+        if (args.size < 2) {
+            player.sendMessage("§cUsage: /wizpet battle <player>")
+            return true
+        }
+        val target = plugin.server.getPlayerExact(args[1])
+        if (target == null) {
+            player.sendMessage("§c${args[1]} is not online.")
+            return true
+        }
+        if (target.uniqueId == player.uniqueId) {
+            player.sendMessage("§cYou cannot battle yourself.")
+            return true
+        }
+        petManager.battleManager.startBattle(player, target)
         return true
     }
 
@@ -258,6 +305,10 @@ private class PetCommand(private val plugin: WizPets, private val petManager: Pe
         sender.sendMessage("§e/wizpet stay §7- Instruct your active pet to hold position")
         sender.sendMessage("§e/wizpet follow §7- Resume following you")
         sender.sendMessage("§e/wizpet crops §7- Configure farming targets via an anvil")
+        sender.sendMessage("§e/wizpet incubate <pet one> <pet two> [count] §7- Start incubating eggs between two pets")
+        sender.sendMessage("§e/wizpet eggs §7- Review incubating eggs")
+        sender.sendMessage("§e/wizpet hatch §7- Hatch all ready eggs together")
+        sender.sendMessage("§e/wizpet battle <player> §7- Challenge another tamer to a pet battle")
         sender.sendMessage("§e/wizpet talents [nickname] §7- Inspect pet talents")
         sender.sendMessage("§e/wizpet release <nickname> §7- Release a pet")
         sender.sendMessage("§e/wizpet admin ... §7- Administrative controls")
@@ -282,24 +333,50 @@ private class PetCommand(private val plugin: WizPets, private val petManager: Pe
     override fun onTabComplete(sender: CommandSender, command: Command, alias: String, args: Array<out String>): MutableList<String> {
         if (args.isEmpty()) return mutableListOf()
         return when (args.size) {
-            1 -> listOf("list", "capture", "summon", "dismiss", "select", "stay", "follow", "info", "stats", "talents", "release", "rename", "crops", "admin")
+            1 -> listOf(
+                "list",
+                "capture",
+                "summon",
+                "dismiss",
+                "select",
+                "stay",
+                "follow",
+                "info",
+                "stats",
+                "talents",
+                "release",
+                "rename",
+                "crops",
+                "incubate",
+                "eggs",
+                "hatch",
+                "battle",
+                "admin"
+            )
                 .filter { it.startsWith(args[0], ignoreCase = true) }
                 .toMutableList()
 
             2 -> when (args[0].lowercase(Locale.US)) {
                 "capture" -> PetSpeciesRegistry.getAllSpecies().map { it.id }.filter { it.startsWith(args[1], ignoreCase = true) }.toMutableList()
-                "select", "info", "stats", "talents", "release", "rename" -> {
+                "select", "info", "stats", "talents", "release", "rename", "incubate" -> {
                     val player = sender as? Player ?: return mutableListOf()
                     petManager.listPets(player).map { it.nickname }.filter { it.startsWith(args[1], ignoreCase = true) }.toMutableList()
                 }
+                "battle" -> plugin.server.onlinePlayers.map { it.name }.filter { it.startsWith(args[1], ignoreCase = true) }.toMutableList()
                 "admin" -> listOf("give", "reload").filter { it.startsWith(args[1], ignoreCase = true) }.toMutableList()
                 else -> mutableListOf()
             }
 
-            3 -> if (args[0].equals("admin", true) && args[1].equals("give", true)) {
-                plugin.server.onlinePlayers.map { it.name }.filter { it.startsWith(args[2], ignoreCase = true) }.toMutableList()
-            } else {
-                mutableListOf()
+            3 -> when {
+                args[0].equals("admin", true) && args[1].equals("give", true) ->
+                    plugin.server.onlinePlayers.map { it.name }.filter { it.startsWith(args[2], ignoreCase = true) }.toMutableList()
+
+                args[0].equals("incubate", true) -> {
+                    val player = sender as? Player ?: return mutableListOf()
+                    petManager.listPets(player).map { it.nickname }.filter { it.startsWith(args[2], ignoreCase = true) }.toMutableList()
+                }
+
+                else -> mutableListOf()
             }
 
             4 -> if (args[0].equals("admin", true) && args[1].equals("give", true)) {

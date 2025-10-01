@@ -1,5 +1,7 @@
 autosummon: true
 starting-level: 5
+incubation-seconds: 120
+battle-experience: 60
 species:
   ember_spark:
     name: Ember Spark
@@ -36,7 +38,7 @@ species:
   verdant_nymph:
     name: Verdant Nymph
     element: NATURE
-    entity-type: ARMOR_STAND
+    entity-type: BEE
     model: FLOWERING_AZALEA
     description: Loves tending gardens and shielding allies with living vines.
     base-stats:
@@ -48,6 +50,7 @@ species:
     talents:
       - healing_aura
       - verdant_caretaker
+      - pollinator_procession
       - agrarian_directive
   storm_charger:
     name: Storm Charger

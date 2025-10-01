@@ -17,6 +17,30 @@ data class StatSet(
         StatType.SPEED -> speed
     }
 
+    operator fun plus(other: StatSet): StatSet = StatSet(
+        health = health + other.health,
+        attack = attack + other.attack,
+        defense = defense + other.defense,
+        magic = magic + other.magic,
+        speed = speed + other.speed
+    )
+
+    operator fun div(divisor: Double): StatSet = StatSet(
+        health = health / divisor,
+        attack = attack / divisor,
+        defense = defense / divisor,
+        magic = magic / divisor,
+        speed = speed / divisor
+    )
+
+    fun scaled(factor: Double): StatSet = StatSet(
+        health = health * factor,
+        attack = attack * factor,
+        defense = defense * factor,
+        magic = magic * factor,
+        speed = speed * factor
+    )
+
     companion object {
         fun randomEV(random: Random): StatSet = StatSet(
             health = random.nextDouble(0.0, 252.0),

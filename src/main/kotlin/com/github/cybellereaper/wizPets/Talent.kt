@@ -107,6 +107,34 @@ class VerdantCaretakerTalent : PeriodicTalent(intervalSeconds = 10) {
     }
 }
 
+class PollinatorProcessionTalent : PeriodicTalent(intervalSeconds = 14) {
+    override val id: String = "pollinator_procession"
+    override val displayName: String = "Pollinator Procession"
+    override val description: String = "Summons motes of life to pollinate crops around you."
+
+    override fun trigger(pet: Pet) {
+        val world = pet.owner.world
+        val origin = pet.owner.location
+        var boosted = false
+        repeat(6) {
+            val sample = origin.clone().add(Random.nextDouble(-4.0, 4.0), -1.0, Random.nextDouble(-4.0, 4.0))
+            val block = sample.block
+            val crop = block.location.add(0.0, 1.0, 0.0).block
+            val data = crop.blockData
+            if (data is Ageable && data.age < data.maximumAge) {
+                data.age = min(data.age + 2, data.maximumAge)
+                crop.blockData = data
+                world.spawnParticle(Particle.COMPOSTER, crop.location.add(0.5, 0.5, 0.5), 8, 0.25, 0.25, 0.25, 0.02)
+                boosted = true
+            }
+        }
+        if (boosted) {
+            world.playSound(origin, org.bukkit.Sound.ENTITY_BEE_POLLINATE, 0.6f, 1.3f)
+            pet.owner.sendActionBar(Component.text("§aNature spirits pollinate your crops!"))
+        }
+    }
+}
+
 class EssenceHarvesterTalent : Talent {
     override val id: String = "essence_harvester"
     override val displayName: String = "Essence Harvester"
@@ -202,6 +230,7 @@ object TalentRegistry {
         "arcane_burst" to { ArcaneBurstTalent() },
         "verdant_caretaker" to { VerdantCaretakerTalent() },
         "essence_harvester" to { EssenceHarvesterTalent() },
+        "pollinator_procession" to { PollinatorProcessionTalent() },
         "elemental_ward" to { ElementalWardTalent() },
         "agrarian_directive" to { AgrarianDirectiveTalent() }
     )
