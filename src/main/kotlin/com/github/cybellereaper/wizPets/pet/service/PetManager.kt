@@ -24,7 +24,7 @@ import kotlin.math.max
 import kotlin.random.Random
 
 class PetManager(
-    private val talentRegistry: TalentRegistry,
+    talentRegistry: TalentRegistry,
     private val repository: PetRepository,
     private val speciesCatalog: () -> Map<String, PetSpecies>,
 ) : Listener {
@@ -32,6 +32,8 @@ class PetManager(
     private val armorStandPool = ArmorStandPool()
     private val petsByOwner: MutableMap<UUID, MutableList<PetInstance>> = ConcurrentHashMap()
     private val summonedPet: MutableMap<UUID, PetInstance> = ConcurrentHashMap()
+    @Volatile
+    private var talentRegistry: TalentRegistry = talentRegistry
 
     fun load() {
         val catalog = speciesCatalog()
@@ -110,6 +112,10 @@ class PetManager(
             }
             pet.tick(owner, talentRegistry)
         }
+    }
+
+    fun updateTalents(registry: TalentRegistry) {
+        talentRegistry = registry
     }
 
     @EventHandler

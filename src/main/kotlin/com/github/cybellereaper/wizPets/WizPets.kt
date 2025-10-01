@@ -1,10 +1,9 @@
 package com.github.cybellereaper.wizPets
 
-import com.github.cybellereaper.wizPets.config.SpeciesConfig
 import com.github.cybellereaper.wizPets.pet.model.PetSpecies
 import com.github.cybellereaper.wizPets.pet.service.PetManager
 import com.github.cybellereaper.wizPets.pet.service.PetRepository
-import com.github.cybellereaper.wizPets.talent.TalentRegistry
+import com.github.cybellereaper.wizPets.script.WizPetScriptRuntime
 import org.bukkit.Bukkit
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
@@ -19,21 +18,20 @@ import java.util.UUID
 
 class WizPets : JavaPlugin(), TabExecutor {
 
-    private lateinit var speciesConfig: SpeciesConfig
     private lateinit var petRepository: PetRepository
     private lateinit var petManager: PetManager
-    private lateinit var talentRegistry: TalentRegistry
-
+    private lateinit var scriptRuntime: WizPetScriptRuntime
     private var tickTask: BukkitTask? = null
     private var speciesIndex: Map<String, PetSpecies> = emptyMap()
 
     override fun onEnable() {
         saveDefaultConfig()
-        speciesConfig = SpeciesConfig(this)
+        scriptRuntime = WizPetScriptRuntime(this)
         petRepository = PetRepository(File(dataFolder, "pets"))
-        talentRegistry = TalentRegistry.default()
-        speciesIndex = speciesConfig.load()
-        petManager = PetManager(talentRegistry, petRepository) { speciesIndex }
+
+        val state = scriptRuntime.load()
+        speciesIndex = state.species
+        petManager = PetManager(state.talents, petRepository) { speciesIndex }
         petManager.load()
 
         server.pluginManager.registerEvents(petManager, this)
@@ -41,7 +39,7 @@ class WizPets : JavaPlugin(), TabExecutor {
         getCommand("wizpet")?.tabCompleter = this
 
         tickTask = server.scheduler.runTaskTimer(this, Runnable { petManager.tick() }, 20L, 20L)
-        logger.info("WizPets enabled with ${speciesIndex.size} species")
+        logger.info("WizPets enabled with ${speciesIndex.size} scripted species")
     }
 
     override fun onDisable() {
@@ -220,7 +218,9 @@ class WizPets : JavaPlugin(), TabExecutor {
             "reload" -> {
                 petManager.saveAll()
                 reloadConfig()
-                speciesIndex = speciesConfig.load()
+                val state = scriptRuntime.load()
+                speciesIndex = state.species
+                petManager.updateTalents(state.talents)
                 petManager.load()
                 sender.sendMessage("§aWizPets configuration reloaded.")
                 true
@@ -232,4 +232,3 @@ class WizPets : JavaPlugin(), TabExecutor {
         }
     }
 }
-

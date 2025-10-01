@@ -1,15 +1,17 @@
 package com.github.cybellereaper.wizPets.pet.model
 
+import kotlinx.serialization.Serializable
 import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
  * Represents the effort value (EV), individual value (IV), and base stat for a particular attribute.
  */
+@Serializable
 data class StatLine(
-    val base: Int,
-    val effort: Int,
-    val individual: Int,
+    val base: Int = 1,
+    val effort: Int = 0,
+    val individual: Int = 0,
 ) {
     init {
         require(base >= 1) { "Base stat must be positive" }
@@ -27,18 +29,20 @@ data class StatLine(
 /**
  * Effort and individual values without the base stat component.
  */
+@Serializable
 data class StatInvestment(
-    val effort: Int,
-    val individual: Int,
+    val effort: Int = 0,
+    val individual: Int = 0,
 ) {
     fun toLine(base: Int): StatLine = StatLine(base, effort, individual)
 }
 
+@Serializable
 data class StatInvestments(
-    val stamina: StatInvestment,
-    val power: StatInvestment,
-    val defense: StatInvestment,
-    val focus: StatInvestment,
+    val stamina: StatInvestment = StatInvestment(),
+    val power: StatInvestment = StatInvestment(),
+    val defense: StatInvestment = StatInvestment(),
+    val focus: StatInvestment = StatInvestment(),
 ) {
     fun toSheet(baseSheet: StatSheet): StatSheet = StatSheet(
         stamina = stamina.toLine(baseSheet.stamina.base),
@@ -51,11 +55,12 @@ data class StatInvestments(
 /**
  * Simple container for a pet's combat-relevant stat lines.
  */
+@Serializable
 data class StatSheet(
-    val stamina: StatLine,
-    val power: StatLine,
-    val defense: StatLine,
-    val focus: StatLine,
+    val stamina: StatLine = StatLine(),
+    val power: StatLine = StatLine(),
+    val defense: StatLine = StatLine(),
+    val focus: StatLine = StatLine(),
 ) {
     fun atLevel(level: Int): CombatStats = CombatStats(
         maxHealth = stamina.total(level) * 5,
@@ -68,10 +73,10 @@ data class StatSheet(
 /**
  * Runtime combat values derived from the stat sheet.
  */
+@Serializable
 data class CombatStats(
     val maxHealth: Int,
     val attack: Int,
     val protection: Int,
     val support: Int,
 )
-

@@ -5,7 +5,12 @@ import com.github.cybellereaper.wizPets.pet.model.PetSnapshot
 import com.github.cybellereaper.wizPets.pet.model.PetSpecies
 import com.github.cybellereaper.wizPets.pet.model.StatInvestment
 import com.github.cybellereaper.wizPets.pet.model.StatInvestments
+import com.github.cybellereaper.wizPets.serialization.UUIDSerializer
 import com.github.cybellereaper.wizPets.talent.TalentId
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.bukkit.configuration.file.YamlConfiguration
 import java.io.File
 import java.util.UUID
@@ -18,6 +23,11 @@ class PetRepository(private val directory: File) {
     }
 
     private val speciesIndex = mutableMapOf<String, PetSpecies>()
+    private val json = Json {
+        encodeDefaults = true
+        prettyPrint = true
+        ignoreUnknownKeys = true
+    }
 
     fun refreshSpeciesIndex(newIndex: Map<String, PetSpecies>) {
         speciesIndex.clear()
@@ -26,27 +36,40 @@ class PetRepository(private val directory: File) {
 
     fun load(speciesIndex: Map<String, PetSpecies>): Map<UUID, MutableList<PetInstance>> {
         refreshSpeciesIndex(speciesIndex)
-        return directory.listFiles { file -> file.extension == "yml" }
-            ?.mapNotNull(::loadFile)
-            ?.toMap()
-            ?: emptyMap()
+        val result = mutableMapOf<UUID, MutableList<PetInstance>>()
+
+        directory.listFiles { file -> file.extension.equals("json", true) }
+            ?.mapNotNull(::loadJson)
+            ?.forEach { (owner, pets) -> result[owner] = pets }
+
+        directory.listFiles { file -> file.extension.equals("yml", true) }
+            ?.mapNotNull(::loadLegacyYaml)
+            ?.forEach { (owner, pets) -> result.putIfAbsent(owner, pets) }
+
+        return result
     }
 
     fun save(ownerId: UUID, pets: List<PetInstance>) {
-        val file = File(directory, "$ownerId.yml")
-        val yaml = YamlConfiguration()
-        yaml.set("owner", ownerId.toString())
-        yaml.set("pets", pets.map(::serializeSnapshot))
-        yaml.save(file)
+        val file = File(directory, "$ownerId.json")
+        val record = PetStoreFile(ownerId = ownerId, pets = pets.map(PetInstance::snapshot))
+        file.writeText(json.encodeToString(record))
     }
 
-    private fun loadFile(file: File): Pair<UUID, MutableList<PetInstance>>? {
+    private fun loadJson(file: File): Pair<UUID, MutableList<PetInstance>>? = runCatching {
+        val record = json.decodeFromString<PetStoreFile>(file.readText())
+        val pets = record.pets.mapNotNull { snapshot ->
+            snapshot.toInstance(record.owner, speciesIndex)
+        }
+        record.owner to pets.toMutableList()
+    }.getOrNull()
+
+    private fun loadLegacyYaml(file: File): Pair<UUID, MutableList<PetInstance>>? {
         val yaml = YamlConfiguration.loadConfiguration(file)
         val ownerId = yaml.getString("owner")?.let(UUID::fromString) ?: return null
         val list = yaml.getMapList("pets").mapNotNull { section ->
             @Suppress("UNCHECKED_CAST")
             val typed = section as? Map<String, Any> ?: return@mapNotNull null
-            deserializeSnapshot(typed)?.toInstance(ownerId)
+            deserializeSnapshot(typed)?.toInstance(ownerId, speciesIndex)
         }
         return ownerId to list.toMutableList()
     }
@@ -65,7 +88,7 @@ class PetRepository(private val directory: File) {
             focus = statsSection.toInvestment("focus"),
         )
         val talents = (section["talents"] as? List<*>)
-            ?.mapNotNull { (it as? String)?.let { name -> runCatching { TalentId.valueOf(name) }.getOrNull() } }
+            ?.mapNotNull { (it as? String)?.let(::TalentId) }
             ?: emptyList()
         return PetSnapshot(id, nickname, speciesId, level, investments, talents)
     }
@@ -77,30 +100,8 @@ class PetRepository(private val directory: File) {
         return StatInvestment(effort, individual)
     }
 
-    private fun serializeSnapshot(pet: PetInstance): Map<String, Any> {
-        val snapshot = pet.snapshot()
-        return mapOf(
-            "id" to snapshot.id.toString(),
-            "name" to snapshot.nickname,
-            "species" to snapshot.speciesId,
-            "level" to snapshot.level,
-            "stats" to mapOf(
-                "stamina" to snapshot.investments.stamina.toMap(),
-                "power" to snapshot.investments.power.toMap(),
-                "defense" to snapshot.investments.defense.toMap(),
-                "focus" to snapshot.investments.focus.toMap(),
-            ),
-            "talents" to snapshot.talents.map(TalentId::name),
-        )
-    }
-
-    private fun StatInvestment.toMap(): Map<String, Any> = mapOf(
-        "ev" to effort,
-        "iv" to individual,
-    )
-
-    private fun PetSnapshot.toInstance(ownerId: UUID): PetInstance {
-        val species = requireNotNull(speciesIndex[speciesId]) { "Unknown species $speciesId" }
+    private fun PetSnapshot.toInstance(ownerId: UUID, speciesIndex: Map<String, PetSpecies>): PetInstance? {
+        val species = speciesIndex[speciesId] ?: return null
         return PetInstance(
             id = id,
             ownerId = ownerId,
@@ -111,5 +112,11 @@ class PetRepository(private val directory: File) {
             talents = if (talents.isEmpty()) species.defaultTalents else talents,
         )
     }
-}
 
+    @Serializable
+    private data class PetStoreFile(
+        @Serializable(with = UUIDSerializer::class)
+        val owner: UUID,
+        val pets: List<PetSnapshot>,
+    )
+}

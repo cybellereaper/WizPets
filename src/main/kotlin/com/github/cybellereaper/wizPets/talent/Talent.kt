@@ -1,19 +1,32 @@
 package com.github.cybellereaper.wizPets.talent
 
+import kotlinx.serialization.Serializable
 import org.bukkit.entity.ArmorStand
 import org.bukkit.entity.LivingEntity
 import org.bukkit.inventory.ItemStack
-import java.util.EnumMap
+import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Enumeration of built-in talents inspired by Palworld roles.
+ * Identifier for a companion talent. Script authors can create arbitrary names while
+ * built-in helpers expose a stable set of defaults.
  */
-enum class TalentId {
-    SENTINEL,
-    MEDIC,
-    GARDENER,
-    GATHERER,
-    ARTISAN,
+@JvmInline
+@Serializable
+value class TalentId(val value: String) {
+    init {
+        require(value.isNotBlank()) { "Talent identifier cannot be blank" }
+    }
+
+    override fun toString(): String = value
+
+    companion object {
+        val SENTINEL = TalentId("sentinel")
+        val MEDIC = TalentId("medic")
+        val GARDENER = TalentId("gardener")
+        val GATHERER = TalentId("gatherer")
+        val ARTISAN = TalentId("artisan")
+    }
 }
 
 /**
@@ -34,32 +47,29 @@ data class TalentContext(
 )
 
 /**
- * Simple registry that maps talent identifiers to their functional implementations.
+ * Registry that maps talent identifiers to their functional implementations. Supports hot-swapping
+ * at runtime when scripts are reloaded.
  */
-class TalentRegistry(private val implementations: EnumMap<TalentId, Talent>) {
-    fun get(id: TalentId): Talent = implementations[id]
+class TalentRegistry private constructor(
+    private val implementations: Map<TalentId, Talent>,
+) {
+
+    fun get(id: TalentId): Talent = implementations[id.normalized()]
         ?: error("Missing talent implementation for $id")
 
-    companion object {
-        fun default(): TalentRegistry {
-            val map = EnumMap<TalentId, Talent>(TalentId::class.java)
-            map[TalentId.SENTINEL] = Talent { context ->
-                SentinelTalent.perform(context)
-            }
-            map[TalentId.MEDIC] = Talent { context ->
-                MedicTalent.perform(context)
-            }
-            map[TalentId.GARDENER] = Talent { context ->
-                GardenerTalent.perform(context)
-            }
-            map[TalentId.GATHERER] = Talent { context ->
-                GathererTalent.perform(context)
-            }
-            map[TalentId.ARTISAN] = Talent { context ->
-                ArtisanTalent.perform(context)
-            }
-            return TalentRegistry(map)
+    class Builder {
+        private val map = ConcurrentHashMap<TalentId, Talent>()
+
+        fun register(id: TalentId, talent: Talent): Builder = apply {
+            map[id.normalized()] = talent
         }
+
+        fun build(): TalentRegistry = TalentRegistry(map.toMap())
+    }
+
+    companion object {
+        fun builder(): Builder = Builder()
     }
 }
 
+private fun TalentId.normalized(): TalentId = TalentId(value.lowercase(Locale.ROOT))
