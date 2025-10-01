@@ -129,6 +129,42 @@ class EssenceHarvesterTalent : Talent {
     }
 }
 
+class AgrarianDirectiveTalent : Talent {
+    override val id: String = "agrarian_directive"
+    override val displayName: String = "Agrarian Directive"
+    override val description: String = "While stationed, your pet combs the area for useful drops and automates configured crops."
+    private var sweepTimer = 0
+
+    override fun onSummon(pet: Pet) {
+        pet.extraCollectionRange += 3.5
+    }
+
+    override fun onDismiss(pet: Pet) {
+        pet.extraCollectionRange -= 3.5
+    }
+
+    override fun tick(pet: Pet) {
+        if (pet.getMode() != PetMode.STATIONARY) return
+        sweepTimer = (sweepTimer + 1) % 5
+        if (sweepTimer != 0) return
+        val anchor = pet.getAnchor() ?: return
+        val world = anchor.world
+        val range = 6.0
+        val items = world.getNearbyEntities(anchor, range, range, range)
+            .filterIsInstance<org.bukkit.entity.Item>()
+        items.forEach { item ->
+            val toward = anchor.toVector().subtract(item.location.toVector()).normalize().multiply(0.3)
+            val newVelocity = item.velocity.add(toward)
+            val adjusted = if (newVelocity.lengthSquared() > 0.36) {
+                newVelocity.normalize().multiply(0.6)
+            } else {
+                newVelocity
+            }
+            item.velocity = adjusted
+        }
+    }
+}
+
 class ElementalWardTalent : Talent {
     override val id: String = "elemental_ward"
     override val displayName: String = "Elemental Ward"
@@ -166,7 +202,8 @@ object TalentRegistry {
         "arcane_burst" to { ArcaneBurstTalent() },
         "verdant_caretaker" to { VerdantCaretakerTalent() },
         "essence_harvester" to { EssenceHarvesterTalent() },
-        "elemental_ward" to { ElementalWardTalent() }
+        "elemental_ward" to { ElementalWardTalent() },
+        "agrarian_directive" to { AgrarianDirectiveTalent() }
     )
 
     fun rollTalents(random: Random, species: PetSpecies, count: Int = 2): List<String> {

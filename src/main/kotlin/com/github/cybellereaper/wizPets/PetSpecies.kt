@@ -1,6 +1,7 @@
 package com.github.cybellereaper.wizPets
 
 import org.bukkit.Material
+import org.bukkit.entity.EntityType
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.plugin.java.JavaPlugin
 
@@ -19,6 +20,7 @@ data class PetSpecies(
     val displayName: String,
     val element: Element,
     val baseStats: StatSet,
+    val entityType: EntityType,
     val modelItem: Material,
     val description: String,
     val talentPool: List<String>
@@ -49,6 +51,9 @@ object PetSpeciesRegistry {
         val name = section.getString("name") ?: id.replaceFirstChar { it.uppercase() }
         val elementName = section.getString("element")?.uppercase() ?: "ARCANE"
         val element = runCatching { Element.valueOf(elementName) }.getOrDefault(Element.ARCANE)
+        val entityTypeName = section.getString("entity-type", "ARMOR_STAND")?.uppercase()
+        val entityType = entityTypeName?.let { runCatching { EntityType.valueOf(it) }.getOrNull() }
+            ?: EntityType.ARMOR_STAND
         val modelMaterial = section.getString("model", "AMETHYST_SHARD")
         val material = Material.matchMaterial(modelMaterial ?: "") ?: Material.AMETHYST_SHARD
         val statsSection = section.getConfigurationSection("base-stats")
@@ -70,6 +75,7 @@ object PetSpeciesRegistry {
             displayName = name,
             element = element,
             baseStats = baseStats,
+            entityType = entityType,
             modelItem = material,
             description = description,
             talentPool = talentPool

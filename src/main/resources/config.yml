@@ -4,6 +4,7 @@ species:
   ember_spark:
     name: Ember Spark
     element: FIRE
+    entity-type: ALLAY
     model: BLAZE_ROD
     description: A fiery sprite that scorches foes with blazing arcs.
     base-stats:
@@ -19,6 +20,7 @@ species:
   tidal_sprite:
     name: Tidal Sprite
     element: WATER
+    entity-type: AXOLOTL
     model: PRISMARINE_CRYSTALS
     description: A playful water elemental that mends allies mid-fight.
     base-stats:
@@ -34,6 +36,7 @@ species:
   verdant_nymph:
     name: Verdant Nymph
     element: NATURE
+    entity-type: ARMOR_STAND
     model: FLOWERING_AZALEA
     description: Loves tending gardens and shielding allies with living vines.
     base-stats:
@@ -45,10 +48,11 @@ species:
     talents:
       - healing_aura
       - verdant_caretaker
-      - guardian_shell
+      - agrarian_directive
   storm_charger:
     name: Storm Charger
     element: STORM
+    entity-type: VEX
     model: AMETHYST_SHARD
     description: A thunderborn pet that darts between foes gathering loot.
     base-stats:

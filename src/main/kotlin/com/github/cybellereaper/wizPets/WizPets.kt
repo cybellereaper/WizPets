@@ -41,11 +41,14 @@ private class PetCommand(private val plugin: WizPets, private val petManager: Pe
             "summon" -> handleSummon(sender, args)
             "dismiss" -> handleDismiss(sender)
             "select" -> handleSelect(sender, args)
+            "stay" -> handleStay(sender)
+            "follow" -> handleFollow(sender)
             "info" -> handleInfo(sender, args)
             "stats" -> handleInfo(sender, args)
             "talents" -> handleTalents(sender, args)
             "release" -> handleRelease(sender, args)
             "rename" -> handleRename(sender, args)
+            "crops" -> handleCrops(sender)
             "admin" -> handleAdmin(sender, args)
             else -> {
                 sendHelp(sender)
@@ -98,6 +101,18 @@ private class PetCommand(private val plugin: WizPets, private val petManager: Pe
     private fun handleDismiss(sender: CommandSender): Boolean {
         val player = sender.ensurePlayer() ?: return true
         petManager.dismissPet(player)
+        return true
+    }
+
+    private fun handleStay(sender: CommandSender): Boolean {
+        val player = sender.ensurePlayer() ?: return true
+        petManager.commandStay(player)
+        return true
+    }
+
+    private fun handleFollow(sender: CommandSender): Boolean {
+        val player = sender.ensurePlayer() ?: return true
+        petManager.commandFollow(player)
         return true
     }
 
@@ -186,6 +201,12 @@ private class PetCommand(private val plugin: WizPets, private val petManager: Pe
         return true
     }
 
+    private fun handleCrops(sender: CommandSender): Boolean {
+        val player = sender.ensurePlayer() ?: return true
+        petManager.openCropConfigurator(player)
+        return true
+    }
+
     private fun handleAdmin(sender: CommandSender, args: Array<out String>): Boolean {
         if (!sender.hasPermission("wizpet.admin")) {
             sender.sendMessage("§cYou do not have permission to use admin controls.")
@@ -234,6 +255,9 @@ private class PetCommand(private val plugin: WizPets, private val petManager: Pe
         sender.sendMessage("§e/wizpet list §7- View your pet collection")
         sender.sendMessage("§e/wizpet capture <species> [nickname] §7- Befriend a new pet")
         sender.sendMessage("§e/wizpet summon [nickname] §7- Summon your active or chosen pet")
+        sender.sendMessage("§e/wizpet stay §7- Instruct your active pet to hold position")
+        sender.sendMessage("§e/wizpet follow §7- Resume following you")
+        sender.sendMessage("§e/wizpet crops §7- Configure farming targets via an anvil")
         sender.sendMessage("§e/wizpet talents [nickname] §7- Inspect pet talents")
         sender.sendMessage("§e/wizpet release <nickname> §7- Release a pet")
         sender.sendMessage("§e/wizpet admin ... §7- Administrative controls")
@@ -258,7 +282,7 @@ private class PetCommand(private val plugin: WizPets, private val petManager: Pe
     override fun onTabComplete(sender: CommandSender, command: Command, alias: String, args: Array<out String>): MutableList<String> {
         if (args.isEmpty()) return mutableListOf()
         return when (args.size) {
-            1 -> listOf("list", "capture", "summon", "dismiss", "select", "info", "stats", "talents", "release", "rename", "admin")
+            1 -> listOf("list", "capture", "summon", "dismiss", "select", "stay", "follow", "info", "stats", "talents", "release", "rename", "crops", "admin")
                 .filter { it.startsWith(args[0], ignoreCase = true) }
                 .toMutableList()
 
