@@ -176,11 +176,17 @@ class WizPets : JavaPlugin(), TabExecutor {
     }
 
     private fun findCaptureTarget(player: Player): LivingEntity? {
-        val nearby = player.getNearbyEntities(6.0, 6.0, 6.0)
-            .filterIsInstance<LivingEntity>()
-            .filter { it != player }
-            .minByOrNull { it.location.distanceSquared(player.location) }
-        return nearby
+        val eye = player.eyeLocation
+        val result = player.world.rayTraceEntities(
+            eye,
+            eye.direction,
+            12.0,
+            0.3,
+        ) { entity ->
+            entity is LivingEntity && entity != player && entity.isValid && !entity.isDead
+        }
+
+        return result?.hitEntity as? LivingEntity
     }
 
     private fun handleAdmin(sender: Player, args: List<String>): Boolean {
