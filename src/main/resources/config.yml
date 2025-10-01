@@ -1,70 +1,50 @@
-autosummon: true
-starting-level: 5
-incubation-seconds: 120
-battle-experience: 60
 species:
-  ember_spark:
-    name: Ember Spark
-    element: FIRE
-    entity-type: ALLAY
-    model: BLAZE_ROD
-    description: A fiery sprite that scorches foes with blazing arcs.
-    base-stats:
-      health: 48
-      attack: 8
-      defense: 4
-      magic: 7
-      speed: 6
+  emberling:
+    name: Emberling
+    element: FLAME
+    level: 6
+    stats:
+      stamina: 18
+      power: 16
+      defense: 9
+      focus: 12
     talents:
-      - arcane_burst
-      - guardian_shell
-      - elemental_ward
-  tidal_sprite:
-    name: Tidal Sprite
-    element: WATER
-    entity-type: AXOLOTL
-    model: PRISMARINE_CRYSTALS
-    description: A playful water elemental that mends allies mid-fight.
-    base-stats:
-      health: 54
-      attack: 6
-      defense: 6
-      magic: 8
-      speed: 5
+      - SENTINEL
+      - ARTISAN
+  glacia:
+    name: Glacia
+    element: FROST
+    level: 7
+    stats:
+      stamina: 20
+      power: 14
+      defense: 16
+      focus: 15
     talents:
-      - healing_aura
-      - elemental_ward
-      - essence_harvester
-  verdant_nymph:
-    name: Verdant Nymph
-    element: NATURE
-    entity-type: BEE
-    model: FLOWERING_AZALEA
-    description: Loves tending gardens and shielding allies with living vines.
-    base-stats:
-      health: 52
-      attack: 5
-      defense: 7
-      magic: 7
-      speed: 5
-    talents:
-      - healing_aura
-      - verdant_caretaker
-      - pollinator_procession
-      - agrarian_directive
-  storm_charger:
-    name: Storm Charger
+      - MEDIC
+      - GARDENER
+  zephyr:
+    name: Zephyr
     element: STORM
-    entity-type: VEX
-    model: AMETHYST_SHARD
-    description: A thunderborn pet that darts between foes gathering loot.
-    base-stats:
-      health: 46
-      attack: 9
-      defense: 5
-      magic: 6
-      speed: 8
+    level: 5
+    stats:
+      stamina: 16
+      power: 18
+      defense: 8
+      focus: 14
     talents:
-      - arcane_burst
-      - essence_harvester
-      - elemental_ward
+      - SENTINEL
+      - GATHERER
+  sylvan:
+    name: Sylvan
+    element: NATURE
+    level: 8
+    stats:
+      stamina: 22
+      power: 12
+      defense: 14
+      focus: 18
+    talents:
+      - GARDENER
+      - MEDIC
+      - GATHERER
