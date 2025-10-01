@@ -1,0 +1,67 @@
+# WizPets
+
+WizPets is a Spigot/Paper plugin that gives every adventurer a magical companion. Pets heal, fight, fly, and even carry their owners thanks to an expanded persistent system backed by Bukkit's Persistent Data Containers (PDCs).
+
+## Features
+
+- **Summonable combat familiars** that glide beside their owner using real pathfinding rather than teleport tricks.
+- **Persistent progression** stored in PDCs, including EVs/IVs, generation, unlocked abilities, and talent selections – no YAML save files required.
+- **Breeding mechanic** that lets two players combine their pets to produce a higher-generation companion with blended stats and inherited talents.
+- **Mounting and aerial travel** so players can ride their pet and unlock flight assistance.
+- **Invisible companion mobs** with persistent data tagging so they despawn cleanly on disconnects and shutdowns.
+- **Actionable debugging** via `/wizpet debug` to inspect saved data and detailed logging for key lifecycle events.
+- **Fully scriptable pets** defined in Lua so entity models, stats, movesets, animations, and hooks can be hot-reloaded without recompiling.
+
+## Commands
+
+| Command | Description |
+| --- | --- |
+| `/wizpet summon` | Summon or respawn your active pet. |
+| `/wizpet dismiss` | Dismiss your current pet. |
+| `/wizpet stats` | View the calculated stats for your active pet. |
+| `/wizpet talents` | List your pet's talents. |
+| `/wizpet mount` | Mount and ride your pet. |
+| `/wizpet dismount` | Leave your pet's saddle. |
+| `/wizpet fly` | Enable assisted flight (unlocks the ability permanently). |
+| `/wizpet land` | Disable assisted flight and land safely. |
+| `/wizpet breed <player>` | Breed your pet with another player's pet to create a new generation. |
+| `/wizpet debug` | View stored pet data for diagnostics. |
+| `/wizpet script list` | List the Lua pet scripts currently loaded. |
+| `/wizpet script set <name>` | Assign a loaded pet script to your companion. |
+| `/wizpet script reload` | Reload all pet scripts and particle definitions from `plugins/WizPets/scripts`. |
+
+## Data Storage
+
+Every player has their pet data serialized into their personal `PersistentDataContainer`. This includes:
+
+- Display name
+- EVs/IVs
+- Talent identifiers
+- Generation and breeding count
+- Ability unlock flags (mounting, flight)
+- Active pet script identifier
+
+Data is saved automatically whenever stats change, on logout, and during server shutdown. Orphaned armor stands tagged by the plugin are also cleaned up on disable.
+
+## Building
+
+Run the Gradle build to compile the plugin JAR:
+
+```bash
+./gradlew build
+```
+
+The compiled artifact will appear under `build/libs/`.
+
+## Lua Scripting & Animations
+
+WizPets loads Lua script files from `plugins/WizPets/scripts` on startup. Each `.lua` file can register:
+
+- `pet({ ... })` blueprints that describe the entire pet: entity type, base stats, follow behavior, combat moves, and lifecycle hooks with full access to the `PetScriptContext` helpers (`playSequence`, `playRaycast`, `playAreaEffect`, `healOwner`, `attack`, `nearestEnemy`, etc.).
+- `particleSequence`, `raycastAnimation`, and `areaEffect` configuration tables that define reusable particle timelines, beam-style raycasts, and layered area pulses.
+
+Edit or drop new scripts into that folder, then run `/wizpet script reload` in game to hot-reload behaviors and particle definitions without restarting the server. A default `default.lua` script is shipped as a reference implementation.
+
+## License
+
+This project is released under the [BSD 3-Clause License](LICENSE).

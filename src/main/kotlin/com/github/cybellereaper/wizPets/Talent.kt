@@ -75,18 +75,36 @@ class ArcaneBurstTalent : Talent {
 }
 
 object TalentRegistry {
-    private val availableTalents = listOf<(Random) -> Talent>(
-        { HealingAuraTalent() },
-        { GuardianShellTalent() },
-        { ArcaneBurstTalent() }
+    private val factories: Map<String, () -> Talent> = mapOf(
+        "healing_aura" to { HealingAuraTalent() },
+        "guardian_shell" to { GuardianShellTalent() },
+        "arcane_burst" to { ArcaneBurstTalent() }
     )
 
-    fun rollTalents(random: Random, count: Int = 2): List<Talent> {
+    private val ids = factories.keys.toList()
+
+    fun rollTalentIds(random: Random, count: Int = 2): List<String> {
         return buildList {
             repeat(count) {
-                val factory = availableTalents[random.nextInt(availableTalents.size)]
-                add(factory(random))
+                add(ids[random.nextInt(ids.size)])
             }
         }
+    }
+
+    fun instantiate(ids: List<String>): List<Talent> = ids.mapNotNull { create(it) }
+
+    fun create(id: String): Talent? = factories[id]?.invoke()
+
+    fun inherit(parentA: List<String>, parentB: List<String>, random: Random, count: Int = 2): List<String> {
+        val pool = (parentA + parentB).distinct().toMutableList()
+        if (pool.isEmpty()) {
+            return rollTalentIds(random, count)
+        }
+        pool.shuffle(random)
+        val result = pool.take(count).toMutableList()
+        while (result.size < count) {
+            result += ids[random.nextInt(ids.size)]
+        }
+        return result
     }
 }
