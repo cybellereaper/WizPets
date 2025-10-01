@@ -40,10 +40,16 @@ private class PetCommand(private val petManager: PetManager) : TabExecutor {
         }
 
         if (args.isEmpty()) {
-            sender.sendMessage("§e/wizpet summon §7- Summon your pet")
+            sender.sendMessage("§e/wizpet summon §7- Summon or respawn your pet")
             sender.sendMessage("§e/wizpet dismiss §7- Dismiss your pet")
             sender.sendMessage("§e/wizpet stats §7- View pet statistics")
             sender.sendMessage("§e/wizpet talents §7- View pet talents")
+            sender.sendMessage("§e/wizpet mount §7- Ride your pet")
+            sender.sendMessage("§e/wizpet dismount §7- Stop riding your pet")
+            sender.sendMessage("§e/wizpet fly §7- Take to the skies with your pet")
+            sender.sendMessage("§e/wizpet land §7- Land safely and end flight")
+            sender.sendMessage("§e/wizpet breed <player> §7- Breed your pet with another player's")
+            sender.sendMessage("§e/wizpet debug §7- Show stored pet data")
             return true
         }
 
@@ -78,6 +84,40 @@ private class PetCommand(private val petManager: PetManager) : TabExecutor {
                 true
             }
 
+            "mount" -> {
+                petManager.mountPet(sender)
+                true
+            }
+
+            "dismount" -> {
+                petManager.dismountPet(sender)
+                true
+            }
+
+            "fly" -> {
+                petManager.enableFlight(sender)
+                true
+            }
+
+            "land" -> {
+                petManager.disableFlight(sender)
+                true
+            }
+
+            "breed" -> {
+                if (args.size < 2) {
+                    sender.sendMessage("§cUsage: /wizpet breed <player>")
+                } else {
+                    petManager.breedPets(sender, args[1])
+                }
+                true
+            }
+
+            "debug" -> {
+                petManager.showDebug(sender)
+                true
+            }
+
             else -> false
         }
     }
@@ -89,8 +129,26 @@ private class PetCommand(private val petManager: PetManager) : TabExecutor {
         args: Array<out String>
     ): MutableList<String> {
         if (args.size == 1) {
-            return mutableListOf("summon", "dismiss", "stats", "talents")
+            return mutableListOf(
+                "summon",
+                "dismiss",
+                "stats",
+                "talents",
+                "mount",
+                "dismount",
+                "fly",
+                "land",
+                "breed",
+                "debug"
+            )
                 .filter { it.startsWith(args[0], ignoreCase = true) }
+                .toMutableList()
+        }
+
+        if (args.size == 2 && args[0].equals("breed", ignoreCase = true)) {
+            return Bukkit.getOnlinePlayers()
+                .filter { it.name.startsWith(args[1], ignoreCase = true) }
+                .map { it.name }
                 .toMutableList()
         }
 
