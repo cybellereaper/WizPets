@@ -10,7 +10,7 @@ WizPets is a Spigot/Paper plugin that gives every adventurer a magical companion
 - **Mounting and aerial travel** so players can ride their pet and unlock flight assistance.
 - **Automatic cleanup** of armor stands on player disconnects and server shutdown to prevent lingering entities.
 - **Actionable debugging** via `/wizpet debug` to inspect saved data and detailed logging for key lifecycle events.
-- **Kotlin-scripted behaviors and particle control** so animations, raycasts, AOE pulses, and pet decision making can be tweaked and hot-reloaded without recompiling.
+- **Lua-scripted behaviors and particle control** so animations, raycasts, AOE pulses, and pet decision making can be tweaked and hot-reloaded without recompiling.
 
 ## Commands
 
@@ -26,7 +26,7 @@ WizPets is a Spigot/Paper plugin that gives every adventurer a magical companion
 | `/wizpet land` | Disable assisted flight and land safely. |
 | `/wizpet breed <player>` | Breed your pet with another player's pet to create a new generation. |
 | `/wizpet debug` | View stored pet data for diagnostics. |
-| `/wizpet script list` | List the Kotlin behavior scripts currently loaded. |
+| `/wizpet script list` | List the Lua behavior scripts currently loaded. |
 | `/wizpet script set <name>` | Assign a loaded behavior script to your pet. |
 | `/wizpet script reload` | Reload all scripts and particle definitions from `plugins/WizPets/scripts`. |
 
@@ -53,14 +53,14 @@ Run the Gradle build to compile the plugin JAR:
 
 The compiled artifact will appear under `build/libs/`.
 
-## Kotlin Scripting & Animations
+## Lua Scripting & Animations
 
-WizPets loads Kotlin script files from `plugins/WizPets/scripts` on startup. Each `.kts` file can register:
+WizPets loads Lua script files from `plugins/WizPets/scripts` on startup. Each `.lua` file can register:
 
-- `petBehavior("name") { ... }` blocks that describe summon/tick/attack/dismiss logic with full access to the `PetScriptContext` helpers (`playSequence`, `playRaycast`, `playAreaEffect`, `healOwner`, etc.).
-- `particleSequence`, `raycastAnimation`, and `areaEffect` builders that define reusable particle timelines, beam-style raycasts, and layered area pulses.
+- `petBehavior("name", { ... })` tables that describe summon/tick/attack/dismiss logic with full access to the `PetScriptContext` helpers (`playSequence`, `playRaycast`, `playAreaEffect`, `healOwner`, etc.).
+- `particleSequence`, `raycastAnimation`, and `areaEffect` configuration tables that define reusable particle timelines, beam-style raycasts, and layered area pulses.
 
-Edit or drop new scripts into that folder, then run `/wizpet script reload` in game to hot-reload behaviors and particle definitions without restarting the server. A default `default.kts` script is shipped as a reference implementation.
+Edit or drop new scripts into that folder, then run `/wizpet script reload` in game to hot-reload behaviors and particle definitions without restarting the server. A default `default.lua` script is shipped as a reference implementation.
 
 ## License
 
