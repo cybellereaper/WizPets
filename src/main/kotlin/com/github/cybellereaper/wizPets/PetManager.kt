@@ -292,7 +292,7 @@ class PetManager(private val plugin: WizPets) : Listener {
 
     @EventHandler
     fun onPlayerJoin(event: PlayerJoinEvent) {
-        Bukkit.getScheduler().runTask(plugin) { restorePet(event.player) }
+        Bukkit.getScheduler().runTask(plugin,Runnable { restorePet(event.player) })
     }
 
     @EventHandler
@@ -336,7 +336,7 @@ class Pet(
         armorStand.isInvisible = false
         armorStand.equipment?.helmet = ItemStack(Material.END_ROD)
         armorStand.equipment?.chestplate = ItemStack(Material.LEATHER_CHESTPLATE)
-        tickTask = Bukkit.getScheduler().runTaskTimer(plugin, { tick() }, 20L, 20L)
+        tickTask = Bukkit.getScheduler().runTaskTimer(plugin, Runnable { tick() }, 20L, 20L)
         talentsInternal.forEach { it.onSummon(this) }
         behaviorInternal.onSummon(scriptContext)
         if (data.flightUnlocked) {
@@ -398,7 +398,7 @@ class Pet(
 
     private fun handleHealing() {
         val ownerHealth = owner.health
-        val maxHealth = owner.getAttribute(Attribute.GENERIC_MAX_HEALTH)?.value ?: 20.0
+        val maxHealth = owner.maxHealth
         if (ownerHealth < maxHealth) {
             val healAmount = max(0.5, getStat(StatType.MAGIC) * 0.05)
             owner.health = minOf(ownerHealth + healAmount, maxHealth)
@@ -422,7 +422,8 @@ class Pet(
     }
 
     fun heal(amount: Double) {
-        val maxHealth = owner.getAttribute(Attribute.GENERIC_MAX_HEALTH)?.value ?: 20.0
+//        val maxHealth = owner.getAttribute(Attribute.MAX_HEALTH)?.value ?: 20.0
+        val maxHealth = owner.maxHealth
         owner.health = minOf(owner.health + amount, maxHealth)
     }
 

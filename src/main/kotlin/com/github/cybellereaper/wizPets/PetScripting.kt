@@ -253,21 +253,25 @@ private class BehaviorFunction(
     private val registrar: ScriptRegistrar
 ) : TwoArgFunction() {
     override fun call(nameArg: LuaValue, configArg: LuaValue): LuaValue {
-        val name = nameArg.checkjstring("Behavior name is required")
+        val name = nameArg.checkjstring()
         val table = configArg.checktable()
 
         registrar.registerBehavior(name) {
             table.get("onSummon").takeIf { it.isfunction() }?.let { fn ->
-                onSummon { context -> invokeSafely(fn, context, "onSummon", name) }
+                onSummon {
+                    invokeSafely(fn, this, "onSummon", name)
+                }
             }
             (table.get("tick").takeIf { it.isfunction() } ?: table.get("onTick").takeIf { it.isfunction() })?.let { fn ->
-                tick { context -> invokeSafely(fn, context, "tick", name) }
+                tick {
+                    invokeSafely(fn, this, "tick", name)
+                }
             }
             table.get("onAttack").takeIf { it.isfunction() }?.let { fn ->
-                onAttack { context, entity, damage ->
+                onAttack { entity: LivingEntity, damage: Double ->
                     invokeSafely(
                         fn,
-                        context,
+                        this,
                         "onAttack",
                         name,
                         CoerceJavaToLua.coerce(entity),
@@ -276,13 +280,15 @@ private class BehaviorFunction(
                 }
             }
             table.get("onDismiss").takeIf { it.isfunction() }?.let { fn ->
-                onDismiss { context -> invokeSafely(fn, context, "onDismiss", name) }
+                onDismiss {
+                    invokeSafely(fn, this, "onDismiss", name)
+                }
             }
             table.get("onRaycastHit").takeIf { it.isfunction() }?.let { fn ->
-                onRaycastHit { context, entity ->
+                onRaycastHit { entity: LivingEntity ->
                     invokeSafely(
                         fn,
-                        context,
+                        this,
                         "onRaycastHit",
                         name,
                         CoerceJavaToLua.coerce(entity)
@@ -290,10 +296,10 @@ private class BehaviorFunction(
                 }
             }
             table.get("onAreaHit").takeIf { it.isfunction() }?.let { fn ->
-                onAreaHit { context, entity ->
+                onAreaHit { entity: LivingEntity ->
                     invokeSafely(
                         fn,
-                        context,
+                        this,
                         "onAreaHit",
                         name,
                         CoerceJavaToLua.coerce(entity)
@@ -329,7 +335,7 @@ private class SequenceFunction(
     private val registrar: ScriptRegistrar
 ) : TwoArgFunction() {
     override fun call(nameArg: LuaValue, configArg: LuaValue): LuaValue {
-        val name = nameArg.checkjstring("Sequence name is required")
+        val name = nameArg.checkjstring()
         val table = configArg.checktable()
 
         registrar.registerSequence(name) {
@@ -343,12 +349,15 @@ private class SequenceFunction(
             }
 
             val frames = framesTable.checktable()
-            var index = LuaValue.NIL
+            var key: LuaValue = LuaValue.NIL
             while (true) {
-                index = frames.next(index)
-                if (index.isnil()) break
-                val frameValue = frames.get(index)
+                val n = frames.next(key) // Varargs: (nextKey, value)
+                val nextKey = n.arg1()
+                if (nextKey.isnil()) break
+                key = nextKey
+                val frameValue = n.arg(2)
                 if (!frameValue.istable()) continue
+
                 val frame = frameValue.checktable()
                 val particle = parseParticle(frame.get("particle"))
                 if (particle == null) {
@@ -360,7 +369,14 @@ private class SequenceFunction(
                 val speed = frame.get("speed").optdouble(0.0)
                 val offset = parseVector(frame.get("offset"))
                 val spread = parseVector(frame.get("spread"))
-                frame(delayTicks = delay, particle = particle, offset = offset, count = count, speed = speed, spread = spread)
+                frame(
+                    delayTicks = delay,
+                    particle = particle,
+                    offset = offset,
+                    count = count,
+                    speed = speed,
+                    spread = spread
+                )
             }
         }
         return LuaValue.NIL
@@ -372,7 +388,7 @@ private class RaycastFunction(
     private val registrar: ScriptRegistrar
 ) : TwoArgFunction() {
     override fun call(nameArg: LuaValue, configArg: LuaValue): LuaValue {
-        val name = nameArg.checkjstring("Raycast name is required")
+        val name = nameArg.checkjstring()
         val table = configArg.checktable()
 
         registrar.registerRaycast(name) {
@@ -394,7 +410,7 @@ private class AreaFunction(
     private val registrar: ScriptRegistrar
 ) : TwoArgFunction() {
     override fun call(nameArg: LuaValue, configArg: LuaValue): LuaValue {
-        val name = nameArg.checkjstring("Area effect name is required")
+        val name = nameArg.checkjstring()
         val table = configArg.checktable()
 
         registrar.registerArea(name) {

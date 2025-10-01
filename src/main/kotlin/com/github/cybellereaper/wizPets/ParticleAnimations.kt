@@ -301,7 +301,7 @@ class RaycastAnimationBuilder(private val name: String) {
 }
 
 class AreaEffectBuilder(private val name: String) {
-    var particle: Particle = Particle.SPELL_WITCH
+    var particle: Particle = Particle.WITCH
     var radius: Double = 3.0
     var pointsPerLayer: Int = 24
     var layers: Int = 1

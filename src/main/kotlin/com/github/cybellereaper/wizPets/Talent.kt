@@ -49,7 +49,7 @@ class GuardianShellTalent : PeriodicTalent(intervalSeconds = 12) {
     override fun trigger(pet: Pet) {
         val absorption = 2.0 + pet.getStat(StatType.DEFENSE) * 0.05
         pet.grantAbsorption(absorption)
-        pet.owner.world.spawnParticle(Particle.SPELL_INSTANT, pet.owner.location, 20, 0.5, 0.5, 0.5, 0.0)
+        pet.owner.world.spawnParticle(Particle.INSTANT_EFFECT, pet.owner.location, 20, 0.5, 0.5, 0.5, 0.0)
     }
 }
 
