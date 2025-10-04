@@ -2,6 +2,8 @@
 
 WizPets is a Spigot/Paper plugin that gives every adventurer a magical companion. Pets heal, fight, fly, and even carry their owners thanks to an expanded persistent system backed by Bukkit's Persistent Data Containers (PDCs).
 
+The codebase has been completely rewritten around a modular service architecture that exposes an official developer API. Other plugins can safely interact with pets, listen for lifecycle events, and register their own talents at runtime.
+
 ## Features
 
 - **Summonable combat familiars** that orbit their owner, heal them, and attack nearby monsters.
@@ -37,6 +39,29 @@ Every player has their pet data serialized into their personal `PersistentDataCo
 - Ability unlock flags (mounting, flight)
 
 Data is saved automatically whenever stats change, on logout, and during server shutdown. Orphaned armor stands tagged by the plugin are also cleaned up on disable.
+
+## Developer API
+
+WizPets registers an implementation of `com.github.cybellereaper.wizpets.api.WizPetsApi` with Bukkit's service manager during plugin enable. Retrieve it with:
+
+```kotlin
+val api = Bukkit.getServicesManager().load(WizPetsApi::class.java)
+```
+
+The API lets you:
+
+- Inspect and persist pet data (`storedPet`, `activePet`, `persist`).
+- Summon or dismiss pets with explicit reasons for traceability.
+- Register and unregister custom talents at runtime with `registerTalent` / `unregisterTalent`.
+- Subscribe to lifecycle callbacks through `addListener` to react to summons, dismissals, and saves.
+
+Custom talents implement `PetTalent` and can manipulate stats, react to ticks, or respond to attacks. Register a talent factory to make it available to players:
+
+```kotlin
+api.registerTalent(TalentFactory { MyCustomTalent() })
+```
+
+See `src/main/kotlin/com/github/cybellereaper/wizpets/api` for the full set of developer-facing types.
 
 ## Building
 

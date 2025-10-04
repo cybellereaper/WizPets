@@ -1,1 +1,6 @@
 autosummon: true
+messages:
+  mountUnlock: "§bYour bond deepens, allowing you to ride your pet!"
+  flightUnlock: "§3Your pet lifts you into the skies!"
+defaults:
+  displayName: "{player}'s Familiar"

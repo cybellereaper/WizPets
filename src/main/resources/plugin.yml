@@ -1,6 +1,6 @@
 name: WizPets
 version: '${version}'
-main: com.github.cybellereaper.wizPets.WizPets
+main: com.github.cybellereaper.wizpets.WizPetsPlugin
 api-version: '1.21'
 commands:
   wizpet:

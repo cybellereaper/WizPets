@@ -1,8 +1,11 @@
-package com.github.cybellereaper.wizPets
+package com.github.cybellereaper.wizpets.api
 
 import kotlin.math.max
 import kotlin.random.Random
 
+/**
+ * Immutable set of battle stats used by pets.
+ */
 data class StatSet(
     val health: Double,
     val attack: Double,
@@ -16,10 +19,17 @@ data class StatSet(
         StatType.MAGIC -> magic
     }
 
+    fun update(type: StatType, value: Double): StatSet = when (type) {
+        StatType.HEALTH -> copy(health = value)
+        StatType.ATTACK -> copy(attack = value)
+        StatType.DEFENSE -> copy(defense = value)
+        StatType.MAGIC -> copy(magic = value)
+    }
+
     fun breedWith(other: StatSet, random: Random): StatSet {
         fun mix(a: Double, b: Double): Double {
             val base = (a + b) / 2.0
-            val variation = random.nextDouble(-2.5, 2.5)
+            val variation = random.nextDouble(-2.75, 2.75)
             return max(1.0, base + variation)
         }
         return StatSet(
