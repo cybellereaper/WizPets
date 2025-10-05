@@ -315,6 +315,73 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
         .orElseGet(() -> List.of("§cNo stored pet data found."));
   }
 
+  @Override
+  public void openEditor(Player player) {
+    PetRecord baseline = storage.loadOrCreate(player, () -> createNewRecord(player));
+    ResolvedTalents resolved = persistAndSync(player, baseline);
+    sendEditorSummary(player, resolved.record());
+  }
+
+  @Override
+  public boolean renamePet(Player player, String newName) {
+    if (newName == null || newName.isBlank()) {
+      player.sendMessage("§cPlease provide a new name for your pet.");
+      return false;
+    }
+    String sanitized = newName.strip();
+    PetRecord baseline = storage.loadOrCreate(player, () -> createNewRecord(player));
+    ResolvedTalents resolved = persistAndSync(player, baseline.withDisplayName(sanitized));
+    player.sendMessage("§aRenamed your pet to §d" + resolved.record().displayName() + "§a.");
+    sendEditorSummary(player, resolved.record());
+    return true;
+  }
+
+  @Override
+  public boolean rerollTalents(Player player) {
+    if (registry.size() == 0) {
+      player.sendMessage("§cNo talents are registered to reroll.");
+      return false;
+    }
+    PetRecord baseline = storage.loadOrCreate(player, () -> createNewRecord(player));
+    int desiredCount = Math.max(2, Math.max(1, baseline.talentIds().size()));
+    SplittableGenerator branch = random.split();
+    List<String> newIds = registry.roll(branch, desiredCount);
+    if (newIds.isEmpty()) {
+      player.sendMessage("§cUnable to reroll talents at this time.");
+      return false;
+    }
+    ResolvedTalents resolved = persistAndSync(player, baseline.withTalentIds(newIds));
+    player.sendMessage("§aRerolled all of your pet's talents.");
+    sendEditorSummary(player, resolved.record());
+    return true;
+  }
+
+  @Override
+  public boolean rerollTalent(Player player, int slotIndex) {
+    if (registry.size() <= 1) {
+      player.sendMessage("§cNot enough unique talents are registered to reroll a single slot.");
+      return false;
+    }
+    PetRecord baseline = storage.loadOrCreate(player, () -> createNewRecord(player));
+    if (slotIndex < 0 || slotIndex >= baseline.talentIds().size()) {
+      player.sendMessage("§cThat talent slot does not exist.");
+      return false;
+    }
+    List<String> updated = new ArrayList<>(baseline.talentIds());
+    String current = updated.get(slotIndex);
+    SplittableGenerator branch = random.split();
+    String replacement = rollReplacement(current, branch);
+    if (replacement == null) {
+      player.sendMessage("§cUnable to find a different talent to roll.");
+      return false;
+    }
+    updated.set(slotIndex, replacement);
+    ResolvedTalents resolved = persistAndSync(player, baseline.withTalentIds(updated));
+    player.sendMessage("§aRerolled talent slot " + (slotIndex + 1) + ".");
+    sendEditorSummary(player, resolved.record());
+    return true;
+  }
+
   private String buildStatsSummary(PetRecord record) {
     return Seq.of(StatType.values())
         .map(
@@ -326,6 +393,39 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
                         "%.2f",
                         record.evs().value(type) / 4.0 + record.ivs().value(type)))
         .toString(", ");
+  }
+
+  private ResolvedTalents persistAndSync(Player player, PetRecord pending) {
+    ResolvedTalents resolved = talentResolver.resolve(pending);
+    storage.save(player, resolved.record());
+    ActivePetImpl pet = activePets.get(player.getUniqueId());
+    if (pet != null) {
+      pet.update(resolved.record(), resolved.talents());
+    }
+    listeners.forEach(listener -> listener.onPersist(player, resolved.record()));
+    return resolved;
+  }
+
+  private void sendEditorSummary(Player player, PetRecord record) {
+    PetEditorFormatter.summaryLines(record, registry).forEach(player::sendMessage);
+  }
+
+  private String rollReplacement(String current, SplittableGenerator branch) {
+    String candidate = null;
+    for (int attempt = 0; attempt < 6; attempt++) {
+      List<String> rolled = registry.roll(branch.split(), 1);
+      if (rolled.isEmpty()) {
+        continue;
+      }
+      candidate = rolled.getFirst();
+      if (!candidate.equals(current)) {
+        break;
+      }
+    }
+    if (candidate == null || candidate.equals(current)) {
+      return registry.size() > 1 ? null : current;
+    }
+    return candidate;
   }
 
   private PetRecord createNewRecord(Player player) {

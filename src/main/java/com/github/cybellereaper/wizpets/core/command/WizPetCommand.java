@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.IntStream;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Server;
 import org.bukkit.command.Command;
@@ -129,6 +130,7 @@ public final class WizPetCommand implements TabExecutor {
     commands.add(new CommandRegistration("dismount", "Stop riding your pet", new DismountAction()));
     commands.add(new CommandRegistration("fly", "Enable flight with your pet", new FlyAction()));
     commands.add(new CommandRegistration("land", "Land and disable pet flight", new LandAction()));
+    commands.add(new CommandRegistration("edit", "Open the pet editor", new EditAction()));
     commands.add(
         new CommandRegistration(
             "breed", "Breed your pet with another player's", new BreedAction()));
@@ -180,6 +182,92 @@ public final class WizPetCommand implements TabExecutor {
 
     private String formatLine(CommandRegistration registration) {
       return "§e/wizpet " + registration.name() + " §7- " + registration.description();
+    }
+  }
+
+  @RequiresPermission(PERMISSION_PREFIX + "edit")
+  private final class EditAction implements PetCommandAction {
+    private static final List<String> SUBCOMMANDS = List.of("name", "reroll", "talent");
+
+    @Override
+    public boolean execute(CommandContext context) {
+      if (context.arguments().isEmpty()) {
+        api.openEditor(context.player());
+        return true;
+      }
+      String subcommand = CommandContext.lowerKey(context.arguments().getFirst());
+      return switch (subcommand) {
+        case "name" -> handleRename(context);
+        case "reroll" -> handleRerollAll(context);
+        case "talent" -> handleRerollSingle(context);
+        default -> {
+          context.reply("§cUsage: /wizpet edit [name <name>|reroll|talent <slot>]");
+          yield true;
+        }
+      };
+    }
+
+    @Override
+    public List<String> tabComplete(CommandContext context) {
+      if (context.arguments().isEmpty()) {
+        return SUBCOMMANDS;
+      }
+      if (context.arguments().size() == 1) {
+        String prefix = CommandContext.lowerKey(context.arguments().getFirst());
+        return SUBCOMMANDS.stream().filter(option -> startsWith(option, prefix)).toList();
+      }
+      String subcommand = CommandContext.lowerKey(context.arguments().getFirst());
+      if (!"talent".equals(subcommand) || context.arguments().size() != 2) {
+        return List.of();
+      }
+      String prefix = context.arguments().get(1);
+      return api
+          .storedPetOptional(context.player())
+          .map(
+              record ->
+                  IntStream.rangeClosed(1, record.talentIds().size())
+                      .mapToObj(Integer::toString)
+                      .filter(option -> startsWith(option, prefix))
+                      .toList())
+          .orElse(List.of());
+    }
+
+    private boolean handleRename(CommandContext context) {
+      if (context.arguments().size() <= 1) {
+        context.reply("§cUsage: /wizpet edit name <new name>");
+        return true;
+      }
+      String newName = context.arguments().stream().skip(1).reduce((a, b) -> a + " " + b).orElse("");
+      if (!api.renamePet(context.player(), newName)) {
+        context.reply("§cUnable to rename your pet.");
+      }
+      return true;
+    }
+
+    private boolean handleRerollAll(CommandContext context) {
+      if (!api.rerollTalents(context.player())) {
+        context.reply("§cUnable to reroll talents right now.");
+      }
+      return true;
+    }
+
+    private boolean handleRerollSingle(CommandContext context) {
+      if (context.arguments().size() <= 1) {
+        context.reply("§cUsage: /wizpet edit talent <slot>");
+        return true;
+      }
+      String rawIndex = context.arguments().get(1);
+      int parsed;
+      try {
+        parsed = Integer.parseInt(rawIndex);
+      } catch (NumberFormatException ex) {
+        context.reply("§cTalent slot must be a number.");
+        return true;
+      }
+      if (!api.rerollTalent(context.player(), parsed - 1)) {
+        context.reply("§cUnable to reroll that talent slot.");
+      }
+      return true;
     }
   }
 

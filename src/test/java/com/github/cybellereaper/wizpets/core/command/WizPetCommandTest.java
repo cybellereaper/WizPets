@@ -95,6 +95,55 @@ final class WizPetCommandTest {
   }
 
   @Test
+  void editCommandOpensEditor() {
+    Player player = playerWithPermission("wizpets.command.edit");
+
+    boolean handled = command.onCommand(player, bukkitCommand, "wizpet", new String[] {"edit"});
+
+    assertTrue(handled);
+    verify(api).openEditor(player);
+  }
+
+  @Test
+  void editRenameDelegatesToApi() {
+    Player player = playerWithPermission("wizpets.command.edit");
+    when(api.renamePet(player, "Nova Prime")).thenReturn(true);
+
+    boolean handled =
+        command.onCommand(
+            player,
+            bukkitCommand,
+            "wizpet",
+            new String[] {"edit", "name", "Nova", "Prime"});
+
+    assertTrue(handled);
+    verify(api).renamePet(player, "Nova Prime");
+  }
+
+  @Test
+  void editRerollDelegatesToApi() {
+    Player player = playerWithPermission("wizpets.command.edit");
+    when(api.rerollTalents(player)).thenReturn(true);
+
+    boolean handled =
+        command.onCommand(player, bukkitCommand, "wizpet", new String[] {"edit", "reroll"});
+
+    assertTrue(handled);
+    verify(api).rerollTalents(player);
+  }
+
+  @Test
+  void editTalentValidatesUsage() {
+    Player player = playerWithPermission("wizpets.command.edit");
+
+    boolean handled =
+        command.onCommand(player, bukkitCommand, "wizpet", new String[] {"edit", "talent"});
+
+    assertTrue(handled);
+    verify(player).sendMessage("§cUsage: /wizpet edit talent <slot>");
+  }
+
+  @Test
   void tabCompleteHonoursPermissions() {
     Player player = playerWithPermission("wizpets.command.summon");
 

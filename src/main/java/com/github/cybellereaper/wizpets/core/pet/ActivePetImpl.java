@@ -25,9 +25,15 @@ import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.Vector;
 
 public final class ActivePetImpl implements ActivePet {
   private static final double ANIMATION_TICK_SECONDS = 0.5D;
+  private static final double FOLLOW_RADIUS = 1.6D;
+  private static final double FOLLOW_HEIGHT_GROUND = 0.9D;
+  private static final double FOLLOW_HEIGHT_AIR = 1.5D;
+  private static final double FOLLOW_SMOOTHING = 0.45D;
+  private static final double ORBIT_INCREMENT = Math.toRadians(12);
 
   private final PetServiceImpl service;
   private final Player owner;
@@ -40,6 +46,7 @@ public final class ActivePetImpl implements ActivePet {
   private int attackCooldown;
   private boolean mounted;
   private boolean flying;
+  private double orbitAngle;
 
   public ActivePetImpl(
       PetServiceImpl service,
@@ -246,8 +253,7 @@ public final class ActivePetImpl implements ActivePet {
       return;
     }
 
-    Location targetLocation =
-        mounted ? owner.getLocation() : owner.getLocation().add(0.5, 1.0, 0.5);
+    Location targetLocation = mounted ? owner.getLocation() : computeFollowLocation(stand);
     stand.teleport(targetLocation);
     currentTalents.forEach(talent -> talent.tick(this));
 
@@ -261,6 +267,32 @@ public final class ActivePetImpl implements ActivePet {
     if (flying) {
       owner.setFallDistance(0f);
     }
+  }
+
+  private Location computeFollowLocation(ArmorStand stand) {
+    Location ownerLocation = owner.getLocation();
+    Location desired = ownerLocation.clone();
+    orbitAngle = (orbitAngle + ORBIT_INCREMENT) % (Math.PI * 2);
+    double height = (owner.isFlying() || flying) ? FOLLOW_HEIGHT_AIR : FOLLOW_HEIGHT_GROUND;
+    desired.add(Math.cos(orbitAngle) * FOLLOW_RADIUS, height, Math.sin(orbitAngle) * FOLLOW_RADIUS);
+
+    Location current = stand.getLocation();
+    if (current.getWorld() == null || !current.getWorld().equals(desired.getWorld())) {
+      desired.setYaw(ownerLocation.getYaw());
+      desired.setPitch(0f);
+      return desired;
+    }
+    Vector delta = desired.toVector().subtract(current.toVector());
+    if (delta.lengthSquared() > 9.0) {
+      // Prevent wild teleports if the owner moved far away.
+      current = desired.clone();
+    } else {
+      Vector step = delta.multiply(FOLLOW_SMOOTHING);
+      current.add(step);
+    }
+    current.setYaw(ownerLocation.getYaw());
+    current.setPitch(0f);
+    return current;
   }
 
   private void handleHealing() {
