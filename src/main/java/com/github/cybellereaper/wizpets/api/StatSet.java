@@ -1,38 +1,21 @@
 package com.github.cybellereaper.wizpets.api;
 
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 /**
  * Immutable set of pet battle statistics.
  */
-public final class StatSet {
-    private final double health;
-    private final double attack;
-    private final double defense;
-    private final double magic;
+public record StatSet(double health, double attack, double defense, double magic) {
+    private static final double MIN_MIXED_VALUE = 1.0;
 
-    public StatSet(double health, double attack, double defense, double magic) {
-        this.health = health;
-        this.attack = attack;
-        this.defense = defense;
-        this.magic = magic;
-    }
-
-    public double getHealth() {
-        return health;
-    }
-
-    public double getAttack() {
-        return attack;
-    }
-
-    public double getDefense() {
-        return defense;
-    }
-
-    public double getMagic() {
-        return magic;
+    public StatSet {
+        validateScalar("health", health);
+        validateScalar("attack", attack);
+        validateScalar("defense", defense);
+        validateScalar("magic", magic);
     }
 
     public double value(StatType type) {
@@ -44,7 +27,7 @@ public final class StatSet {
         };
     }
 
-    public StatSet update(StatType type, double value) {
+    public StatSet with(StatType type, double value) {
         return switch (type) {
             case HEALTH -> new StatSet(value, attack, defense, magic);
             case ATTACK -> new StatSet(health, value, defense, magic);
@@ -53,7 +36,7 @@ public final class StatSet {
         };
     }
 
-    public StatSet breedWith(StatSet other, Random random) {
+    public StatSet breedWith(StatSet other, RandomGenerator random) {
         Objects.requireNonNull(other, "other");
         Objects.requireNonNull(random, "random");
         return new StatSet(
@@ -64,13 +47,13 @@ public final class StatSet {
         );
     }
 
-    private static double mix(double a, double b, Random random) {
+    private static double mix(double a, double b, RandomGenerator random) {
         double base = (a + b) / 2.0;
         double variation = random.nextDouble(-2.75, 2.75);
-        return Math.max(1.0, base + variation);
+        return Math.max(MIN_MIXED_VALUE, base + variation);
     }
 
-    public static StatSet randomEV(Random random) {
+    public static StatSet randomEV(RandomGenerator random) {
         Objects.requireNonNull(random, "random");
         return new StatSet(
             random.nextDouble(0.0, 64.0),
@@ -80,7 +63,7 @@ public final class StatSet {
         );
     }
 
-    public static StatSet randomIV(Random random) {
+    public static StatSet randomIV(RandomGenerator random) {
         Objects.requireNonNull(random, "random");
         return new StatSet(
             random.nextDouble(0.0, 15.0),
@@ -90,32 +73,17 @@ public final class StatSet {
         );
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
+    public Map<StatType, Double> asMap() {
+        Map<StatType, Double> values = new EnumMap<>(StatType.class);
+        for (StatType type : StatType.values()) {
+            values.put(type, value(type));
         }
-        if (!(o instanceof StatSet other)) {
-            return false;
-        }
-        return Double.compare(other.health, health) == 0
-            && Double.compare(other.attack, attack) == 0
-            && Double.compare(other.defense, defense) == 0
-            && Double.compare(other.magic, magic) == 0;
+        return Map.copyOf(values);
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(health, attack, defense, magic);
-    }
-
-    @Override
-    public String toString() {
-        return "StatSet{"
-            + "health=" + health
-            + ", attack=" + attack
-            + ", defense=" + defense
-            + ", magic=" + magic
-            + '}';
+    private static void validateScalar(String label, double value) {
+        if (!Double.isFinite(value) || value < 0.0) {
+            throw new IllegalArgumentException(label + " must be a finite, non-negative value");
+        }
     }
 }

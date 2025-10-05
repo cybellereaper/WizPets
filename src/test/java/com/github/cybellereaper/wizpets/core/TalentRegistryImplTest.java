@@ -50,6 +50,7 @@ class TalentRegistryImplTest {
         List<PetTalent> talents = registry.instantiate(List.of("dummy"));
         assertEquals(1, talents.size());
         assertEquals("Dummy", talents.get(0).getDisplayName());
+        assertThrows(UnsupportedOperationException.class, () -> talents.add(new DummyTalent()));
     }
 
     @Test
@@ -74,6 +75,7 @@ class TalentRegistryImplTest {
         List<String> roll = registry.roll(new Random(0), 3);
         assertEquals(3, roll.size());
         assertTrue(roll.stream().allMatch(id -> id.equals("dummy")));
+        assertThrows(UnsupportedOperationException.class, () -> roll.add("other"));
     }
 
     @Test

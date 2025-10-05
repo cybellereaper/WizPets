@@ -64,7 +64,7 @@ public final class WizPetCommand implements TabExecutor {
                 if (pet == null) {
                     player.sendMessage("§eYou do not have an active pet.");
                 } else {
-                    player.sendMessage("§a" + pet.getRecord().getDisplayName() + " Stats:");
+                    player.sendMessage("§a" + pet.getRecord().displayName() + " Stats:");
                     pet.statBreakdown().forEach((type, value) ->
                         player.sendMessage("§7- §b" + type.getDisplayName() + "§7: §f" + String.format(Locale.US, "%.1f", value))
                     );
@@ -75,7 +75,7 @@ public final class WizPetCommand implements TabExecutor {
                 if (pet == null) {
                     player.sendMessage("§eYou do not have an active pet.");
                 } else {
-                    player.sendMessage("§d" + pet.getRecord().getDisplayName() + " Talents:");
+                    player.sendMessage("§d" + pet.getRecord().displayName() + " Talents:");
                     for (PetTalent talent : pet.getTalents()) {
                         player.sendMessage("§7- §d" + talent.getDisplayName() + "§7: " + talent.getDescription());
                     }

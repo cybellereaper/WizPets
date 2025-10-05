@@ -86,13 +86,13 @@ public final class ActivePetImpl implements ActivePet {
         if (stand.getEquipment() != null) {
             stand.getEquipment().setHelmet(new ItemStack(Material.END_ROD));
         }
-        stand.customName(Component.text(currentRecord.getDisplayName()));
+        stand.customName(Component.text(currentRecord.displayName()));
         stand.setCustomNameVisible(true);
         this.armorStand = stand;
 
         tickTask = Bukkit.getScheduler().runTaskTimer(service.getPlugin(), this::tick, 10L, 10L);
         currentTalents.forEach(talent -> talent.onSummon(this));
-        if (currentRecord.isFlightUnlocked()) {
+        if (currentRecord.flightUnlocked()) {
             owner.setAllowFlight(true);
         }
     }
@@ -101,7 +101,7 @@ public final class ActivePetImpl implements ActivePet {
         this.currentRecord = Objects.requireNonNull(record, "record");
         this.currentTalents = List.copyOf(talents);
         if (armorStand != null) {
-            armorStand.customName(Component.text(record.getDisplayName()));
+            armorStand.customName(Component.text(record.displayName()));
             armorStand.setCustomNameVisible(true);
         }
     }
@@ -122,8 +122,8 @@ public final class ActivePetImpl implements ActivePet {
         currentTalents.forEach(talent -> talent.onDismiss(this));
         dismountIfNecessary();
         if (!persistFlight && owner.getGameMode() != GameMode.CREATIVE && owner.getGameMode() != GameMode.SPECTATOR) {
-            owner.setAllowFlight(currentRecord.isFlightUnlocked());
-            if (!currentRecord.isFlightUnlocked()) {
+            owner.setAllowFlight(currentRecord.flightUnlocked());
+            if (!currentRecord.flightUnlocked()) {
                 owner.setFlying(false);
             }
         }
@@ -138,7 +138,7 @@ public final class ActivePetImpl implements ActivePet {
         if (stand == null) {
             return false;
         }
-        if (!currentRecord.isMountUnlocked()) {
+        if (!currentRecord.mountUnlocked()) {
             currentRecord = currentRecord.withMountUnlocked(true);
             owner.sendMessage(service.getConfigValues().getMountUnlockMessage());
         }
@@ -162,7 +162,7 @@ public final class ActivePetImpl implements ActivePet {
     }
 
     public boolean startFlying() {
-        if (!currentRecord.isFlightUnlocked()) {
+        if (!currentRecord.flightUnlocked()) {
             currentRecord = currentRecord.withFlightUnlocked(true);
             owner.sendMessage(service.getConfigValues().getFlightUnlockMessage());
         }
@@ -181,7 +181,7 @@ public final class ActivePetImpl implements ActivePet {
             return false;
         }
         flying = false;
-        if (owner.getGameMode() != GameMode.CREATIVE && owner.getGameMode() != GameMode.SPECTATOR && !currentRecord.isFlightUnlocked()) {
+        if (owner.getGameMode() != GameMode.CREATIVE && owner.getGameMode() != GameMode.SPECTATOR && !currentRecord.flightUnlocked()) {
             owner.setFlying(false);
             owner.setAllowFlight(false);
         }
@@ -202,8 +202,8 @@ public final class ActivePetImpl implements ActivePet {
     @Override
     public double statValue(StatType type) {
         double base = baseStats.value(type);
-        double iv = currentRecord.getIvs().value(type);
-        double evContribution = currentRecord.getEvs().value(type) / 4.0;
+        double iv = currentRecord.ivs().value(type);
+        double evContribution = currentRecord.evs().value(type) / 4.0;
         double raw = base + iv + evContribution;
         double result = raw;
         for (PetTalent talent : currentTalents) {
@@ -230,9 +230,6 @@ public final class ActivePetImpl implements ActivePet {
         stand.teleport(targetLocation);
         currentTalents.forEach(talent -> talent.tick(this));
 
-        if (attackCooldown > 0) {
-            attackCooldown--;
-        }
         handleHealing();
         handleCombat(stand);
         if (flying) {
@@ -249,6 +246,10 @@ public final class ActivePetImpl implements ActivePet {
     }
 
     private void handleCombat(ArmorStand stand) {
+        if (attackCooldown > 0) {
+            attackCooldown--;
+            return;
+        }
         World world = stand.getWorld();
         double closestDistance = Double.MAX_VALUE;
         Monster target = null;
@@ -261,7 +262,7 @@ public final class ActivePetImpl implements ActivePet {
                 }
             }
         }
-        if (target != null && attackCooldown <= 0) {
+        if (target != null) {
             double damage = statValue(StatType.ATTACK) * 0.75 + statValue(StatType.MAGIC) * 0.25;
             dealDamage(target, damage);
             Monster finalTarget = target;
@@ -273,7 +274,7 @@ public final class ActivePetImpl implements ActivePet {
 
     private void dealDamage(LivingEntity target, double amount) {
         target.damage(amount, owner);
-        owner.sendActionBar(Component.text("§d" + currentRecord.getDisplayName() + " hits "
+        owner.sendActionBar(Component.text("§d" + currentRecord.displayName() + " hits "
             + target.getName() + " for " + String.format(Locale.US, "%.1f", amount)));
     }
 }

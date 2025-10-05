@@ -8,10 +8,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 public final class TalentRegistryImpl implements TalentRegistryView {
     private final Map<String, TalentFactoryWrapper> factories = new LinkedHashMap<>();
@@ -42,14 +43,14 @@ public final class TalentRegistryImpl implements TalentRegistryView {
                 talents.add(wrapper.create());
             }
         }
-        return talents;
+        return List.copyOf(talents);
     }
 
-    public List<String> roll(Random random) {
+    public List<String> roll(RandomGenerator random) {
         return roll(random, 2);
     }
 
-    public List<String> roll(Random random, int count) {
+    public List<String> roll(RandomGenerator random, int count) {
         Objects.requireNonNull(random, "random");
         if (factories.isEmpty() || count <= 0) {
             return Collections.emptyList();
@@ -59,40 +60,32 @@ public final class TalentRegistryImpl implements TalentRegistryView {
         for (int i = 0; i < count; i++) {
             result.add(keys.get(random.nextInt(keys.size())));
         }
-        return result;
+        return List.copyOf(result);
     }
 
-    public List<String> inherit(List<String> parentA, List<String> parentB, Random random) {
+    public List<String> inherit(List<String> parentA, List<String> parentB, RandomGenerator random) {
         return inherit(parentA, parentB, random, 2);
     }
 
-    public List<String> inherit(List<String> parentA, List<String> parentB, Random random, int count) {
+    public List<String> inherit(List<String> parentA, List<String> parentB, RandomGenerator random, int count) {
         Objects.requireNonNull(parentA, "parentA");
         Objects.requireNonNull(parentB, "parentB");
         Objects.requireNonNull(random, "random");
         if (count <= 0) {
             return Collections.emptyList();
         }
-        List<String> pool = new ArrayList<>();
-        for (String id : parentA) {
-            if (!pool.contains(id)) {
-                pool.add(id);
-            }
-        }
-        for (String id : parentB) {
-            if (!pool.contains(id)) {
-                pool.add(id);
-            }
-        }
+        LinkedHashSet<String> pool = new LinkedHashSet<>(parentA);
+        pool.addAll(parentB);
         if (pool.isEmpty()) {
             return roll(random, count);
         }
-        Collections.shuffle(pool, random);
-        List<String> chosen = new ArrayList<>(pool.subList(0, Math.min(count, pool.size())));
+        List<String> ordered = new ArrayList<>(pool);
+        shuffle(ordered, random);
+        List<String> chosen = new ArrayList<>(ordered.subList(0, Math.min(count, ordered.size())));
         while (chosen.size() < count) {
             chosen.addAll(roll(random, 1));
         }
-        return new ArrayList<>(chosen.subList(0, count));
+        return List.copyOf(chosen.subList(0, count));
     }
 
     @Override
@@ -111,6 +104,13 @@ public final class TalentRegistryImpl implements TalentRegistryView {
     @Override
     public int size() {
         return factories.size();
+    }
+
+    private static void shuffle(List<String> values, RandomGenerator random) {
+        for (int i = values.size() - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            Collections.swap(values, i, j);
+        }
     }
 
     private static final class TalentFactoryWrapper implements TalentFactory {

@@ -27,7 +27,7 @@ public interface ActivePet {
         for (StatType type : StatType.values()) {
             breakdown.put(type, statValue(type));
         }
-        return breakdown;
+        return Map.copyOf(breakdown);
     }
 
     void heal(double amount);

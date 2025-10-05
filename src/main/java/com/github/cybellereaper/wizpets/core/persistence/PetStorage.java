@@ -108,22 +108,22 @@ public final class PetStorage {
         PersistentDataContainer parent = player.getPersistentDataContainer();
         PersistentDataContainer container = parent.getAdapterContext().newPersistentDataContainer();
 
-        container.set(nameKey, PersistentDataType.STRING, record.getDisplayName());
-        container.set(generationKey, PersistentDataType.INTEGER, record.getGeneration());
-        container.set(breedKey, PersistentDataType.INTEGER, record.getBreedCount());
-        container.set(talentsKey, PersistentDataType.STRING, String.join(";", record.getTalentIds()));
-        container.set(mountKey, PersistentDataType.BYTE, asByte(record.isMountUnlocked()));
-        container.set(flightKey, PersistentDataType.BYTE, asByte(record.isFlightUnlocked()));
+        container.set(nameKey, PersistentDataType.STRING, record.displayName());
+        container.set(generationKey, PersistentDataType.INTEGER, record.generation());
+        container.set(breedKey, PersistentDataType.INTEGER, record.breedCount());
+        container.set(talentsKey, PersistentDataType.STRING, String.join(";", record.talentIds()));
+        container.set(mountKey, PersistentDataType.BYTE, asByte(record.mountUnlocked()));
+        container.set(flightKey, PersistentDataType.BYTE, asByte(record.flightUnlocked()));
 
-        container.set(evHealthKey, PersistentDataType.DOUBLE, record.getEvs().getHealth());
-        container.set(evAttackKey, PersistentDataType.DOUBLE, record.getEvs().getAttack());
-        container.set(evDefenseKey, PersistentDataType.DOUBLE, record.getEvs().getDefense());
-        container.set(evMagicKey, PersistentDataType.DOUBLE, record.getEvs().getMagic());
+        container.set(evHealthKey, PersistentDataType.DOUBLE, record.evs().health());
+        container.set(evAttackKey, PersistentDataType.DOUBLE, record.evs().attack());
+        container.set(evDefenseKey, PersistentDataType.DOUBLE, record.evs().defense());
+        container.set(evMagicKey, PersistentDataType.DOUBLE, record.evs().magic());
 
-        container.set(ivHealthKey, PersistentDataType.DOUBLE, record.getIvs().getHealth());
-        container.set(ivAttackKey, PersistentDataType.DOUBLE, record.getIvs().getAttack());
-        container.set(ivDefenseKey, PersistentDataType.DOUBLE, record.getIvs().getDefense());
-        container.set(ivMagicKey, PersistentDataType.DOUBLE, record.getIvs().getMagic());
+        container.set(ivHealthKey, PersistentDataType.DOUBLE, record.ivs().health());
+        container.set(ivAttackKey, PersistentDataType.DOUBLE, record.ivs().attack());
+        container.set(ivDefenseKey, PersistentDataType.DOUBLE, record.ivs().defense());
+        container.set(ivMagicKey, PersistentDataType.DOUBLE, record.ivs().magic());
 
         parent.set(rootKey, PersistentDataType.TAG_CONTAINER, container);
     }

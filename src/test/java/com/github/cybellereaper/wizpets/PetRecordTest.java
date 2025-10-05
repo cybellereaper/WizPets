@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PetRecordTest {
@@ -18,8 +19,8 @@ class PetRecordTest {
     void withDisplayNameReturnsNewRecord() {
         PetRecord record = baseRecord();
         PetRecord renamed = record.withDisplayName("New Name");
-        assertEquals("New Name", renamed.getDisplayName());
-        assertEquals("Test", record.getDisplayName());
+        assertEquals("New Name", renamed.displayName());
+        assertEquals("Test", record.displayName());
         assertNotSame(record, renamed);
     }
 
@@ -28,10 +29,16 @@ class PetRecordTest {
         PetRecord record = baseRecord();
         PetRecord mountUnlocked = record.withMountUnlocked(true);
         PetRecord flightUnlocked = mountUnlocked.withFlightUnlocked(true);
-        assertFalse(record.isMountUnlocked());
-        assertFalse(record.isFlightUnlocked());
-        assertTrue(mountUnlocked.isMountUnlocked());
-        assertTrue(flightUnlocked.isFlightUnlocked());
+        assertFalse(record.mountUnlocked());
+        assertFalse(record.flightUnlocked());
+        assertTrue(mountUnlocked.mountUnlocked());
+        assertTrue(flightUnlocked.flightUnlocked());
+    }
+
+    @Test
+    void talentListIsDefensivelyCopied() {
+        PetRecord record = baseRecord();
+        assertThrows(UnsupportedOperationException.class, () -> record.talentIds().add("new"));
     }
 
     private PetRecord baseRecord() {

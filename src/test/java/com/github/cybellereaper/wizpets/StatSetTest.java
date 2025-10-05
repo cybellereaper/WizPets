@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StatSetTest {
@@ -38,11 +39,28 @@ class StatSetTest {
     @Test
     void updateReturnsNewInstanceWithAdjustedValue() {
         StatSet base = new StatSet(10.0, 10.0, 10.0, 10.0);
-        StatSet updated = base.update(StatType.MAGIC, 42.0);
-        assertEquals(42.0, updated.getMagic());
-        assertEquals(10.0, base.getMagic());
+        StatSet updated = base.with(StatType.MAGIC, 42.0);
+        assertEquals(42.0, updated.magic());
+        assertEquals(10.0, base.magic());
         for (StatType type : EnumSet.complementOf(EnumSet.of(StatType.MAGIC))) {
             assertEquals(base.value(type), updated.value(type));
         }
+    }
+
+    @Test
+    void asMapProducesImmutableSnapshot() {
+        StatSet stats = new StatSet(5.0, 6.0, 7.0, 8.0);
+        var map = stats.asMap();
+        assertEquals(4, map.size());
+        for (StatType type : StatType.values()) {
+            assertEquals(stats.value(type), map.get(type));
+        }
+        assertThrows(UnsupportedOperationException.class, () -> map.put(StatType.ATTACK, 9.0));
+    }
+
+    @Test
+    void constructorRejectsInvalidValues() {
+        assertThrows(IllegalArgumentException.class, () -> new StatSet(-1.0, 0.0, 0.0, 0.0));
+        assertThrows(IllegalArgumentException.class, () -> new StatSet(Double.NaN, 0.0, 0.0, 0.0));
     }
 }

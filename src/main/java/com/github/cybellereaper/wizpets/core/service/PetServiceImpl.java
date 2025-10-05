@@ -24,11 +24,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.random.RandomGenerator;
+import java.util.random.RandomGeneratorFactory;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -45,7 +46,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener {
     private final TalentRegistryImpl registry;
     private final Set<PetLifecycleListener> listeners = new CopyOnWriteArraySet<>();
     private final Map<UUID, ActivePetImpl> activePets = new ConcurrentHashMap<>();
-    private final Random random = new Random(System.currentTimeMillis());
+    private final RandomGenerator random = selectGenerator();
 
     public PetServiceImpl(JavaPlugin plugin) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
@@ -82,10 +83,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener {
             existing.remove(true);
         }
         PetRecord loaded = storage.load(player);
-        if (loaded == null) {
-            loaded = createNewRecord(player);
-        }
-        ResolvedTalents resolved = resolveTalents(loaded);
+        ResolvedTalents resolved = resolveTalents(loaded != null ? loaded : createNewRecord(player));
         ActivePetImpl pet = new ActivePetImpl(this, player, resolved.record(), resolved.talents());
         pet.spawn();
         activePets.put(player.getUniqueId(), pet);
@@ -236,23 +234,23 @@ public final class PetServiceImpl implements WizPetsApi, Listener {
             return;
         }
 
-        int generation = Math.max(playerRecord.getGeneration(), partnerRecord.getGeneration()) + 1;
+        int generation = Math.max(playerRecord.generation(), partnerRecord.generation()) + 1;
         PetRecord childRecord = new PetRecord(
             MessageFormat.format("{0}'s Hatchling", player.getName()),
-            playerRecord.getEvs().breedWith(partnerRecord.getEvs(), random),
-            playerRecord.getIvs().breedWith(partnerRecord.getIvs(), random),
-            registry.inherit(playerRecord.getTalentIds(), partnerRecord.getTalentIds(), random),
+            playerRecord.evs().breedWith(partnerRecord.evs(), random),
+            playerRecord.ivs().breedWith(partnerRecord.ivs(), random),
+            registry.inherit(playerRecord.talentIds(), partnerRecord.talentIds(), random),
             generation,
-            playerRecord.getBreedCount() + 1,
-            playerRecord.isMountUnlocked() || partnerRecord.isMountUnlocked(),
-            playerRecord.isFlightUnlocked() || partnerRecord.isFlightUnlocked()
+            playerRecord.breedCount() + 1,
+            playerRecord.mountUnlocked() || partnerRecord.mountUnlocked(),
+            playerRecord.flightUnlocked() || partnerRecord.flightUnlocked()
         );
 
         storage.save(player, childRecord);
         listeners.forEach(listener -> listener.onPersist(player, childRecord));
         summon(player, SummonReason.BREEDING_REFRESH);
 
-        PetRecord updatedPartner = partnerRecord.withBreedCount(partnerRecord.getBreedCount() + 1);
+        PetRecord updatedPartner = partnerRecord.withBreedCount(partnerRecord.breedCount() + 1);
         storage.save(partner, updatedPartner);
         listeners.forEach(listener -> listener.onPersist(partner, updatedPartner));
         ActivePetImpl partnerPet = activePets.get(partner.getUniqueId());
@@ -271,11 +269,11 @@ public final class PetServiceImpl implements WizPetsApi, Listener {
         String stats = buildStatsSummary(record);
         return List.of(
             "§7==== §dPet Debug §7====",
-            "§7Name: §f" + record.getDisplayName(),
-            "§7Generation: §f" + record.getGeneration() + "  §7Breeds: §f" + record.getBreedCount(),
-            "§7Talents: §f" + (record.getTalentIds().isEmpty() ? "None" : String.join(", ", record.getTalentIds())),
-            "§7Mount unlocked: §f" + record.isMountUnlocked(),
-            "§7Flight unlocked: §f" + record.isFlightUnlocked(),
+            "§7Name: §f" + record.displayName(),
+            "§7Generation: §f" + record.generation() + "  §7Breeds: §f" + record.breedCount(),
+            "§7Talents: §f" + (record.talentIds().isEmpty() ? "None" : String.join(", ", record.talentIds())),
+            "§7Mount unlocked: §f" + record.mountUnlocked(),
+            "§7Flight unlocked: §f" + record.flightUnlocked(),
             "§7Base Stats: §f" + stats
         );
     }
@@ -285,7 +283,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener {
         StatType[] types = StatType.values();
         for (int i = 0; i < types.length; i++) {
             StatType type = types[i];
-            double value = record.getEvs().value(type) / 4.0 + record.getIvs().value(type);
+            double value = record.evs().value(type) / 4.0 + record.ivs().value(type);
             builder.append(type.getDisplayName())
                 .append(':')
                 .append(' ')
@@ -316,10 +314,8 @@ public final class PetServiceImpl implements WizPetsApi, Listener {
         activePets.values().forEach(pet -> {
             Player owner = pet.getOwner();
             PetRecord record = storage.load(owner);
-            if (record == null) {
-                record = pet.toRecord();
-            }
-            ResolvedTalents resolved = resolveTalents(record);
+            PetRecord baseline = record != null ? record : pet.toRecord();
+            ResolvedTalents resolved = resolveTalents(baseline);
             storage.save(owner, resolved.record());
             pet.update(resolved.record(), resolved.talents());
         });
@@ -333,8 +329,8 @@ public final class PetServiceImpl implements WizPetsApi, Listener {
 
     private ResolvedTalents resolveTalents(PetRecord record) {
         PetRecord currentRecord = record;
-        List<PetTalent> talents = registry.instantiate(currentRecord.getTalentIds());
-        if (talents.size() != currentRecord.getTalentIds().size() || talents.isEmpty()) {
+        List<PetTalent> talents = registry.instantiate(currentRecord.talentIds());
+        if (talents.size() != currentRecord.talentIds().size() || talents.isEmpty()) {
             List<String> ids = registry.roll(random);
             currentRecord = currentRecord.withTalentIds(ids);
             talents = registry.instantiate(ids);
@@ -355,5 +351,16 @@ public final class PetServiceImpl implements WizPetsApi, Listener {
     }
 
     private record ResolvedTalents(PetRecord record, List<PetTalent> talents) {
+    }
+
+    private static RandomGenerator selectGenerator() {
+        return RandomGeneratorFactory.all()
+            .filter(factory -> "L64X128MixRandom".equals(factory.name()))
+            .findFirst()
+            .orElseGet(() -> RandomGeneratorFactory.all()
+                .filter(factory -> "Random".equals(factory.name()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No compatible random generator available")))
+            .create(System.nanoTime());
     }
 }
