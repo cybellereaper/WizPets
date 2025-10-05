@@ -43,6 +43,14 @@ public interface WizPetsApi {
 
   List<String> debugLines(Player player);
 
+  void openEditor(Player player);
+
+  boolean renamePet(Player player, String newName);
+
+  boolean rerollTalents(Player player);
+
+  boolean rerollTalent(Player player, int slotIndex);
+
   TalentRegistryView talents();
 
   void registerTalent(TalentFactory factory, boolean replace);

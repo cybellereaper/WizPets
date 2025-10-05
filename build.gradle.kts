@@ -55,6 +55,10 @@ tasks.test {
     useJUnitPlatform()
 }
 
+tasks.check {
+    dependsOn("spotlessCheck")
+}
+
 spotless {
     java {
         target("src/**/*.java")
