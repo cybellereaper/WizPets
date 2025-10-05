@@ -4,8 +4,10 @@ import com.github.cybellereaper.wizpets.api.ActivePet;
 import com.github.cybellereaper.wizpets.api.PetRecord;
 import com.github.cybellereaper.wizpets.api.StatSet;
 import com.github.cybellereaper.wizpets.api.StatType;
+import com.github.cybellereaper.wizpets.api.model.blockbench.BlockbenchModelInstance;
 import com.github.cybellereaper.wizpets.api.talent.PetTalent;
 import com.github.cybellereaper.wizpets.core.service.PetServiceImpl;
+import com.github.cybellereaper.wizpets.core.model.blockbench.ArmorStandPoseTarget;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -25,12 +27,15 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
 
 public final class ActivePetImpl implements ActivePet {
+  private static final double ANIMATION_TICK_SECONDS = 0.5D;
+
   private final PetServiceImpl service;
   private final Player owner;
   private final StatSet baseStats = new StatSet(40.0, 6.0, 3.0, 5.0);
   private PetRecord currentRecord;
   private List<PetTalent> currentTalents;
   private ArmorStand armorStand;
+  private BlockbenchModelInstance modelInstance;
   private BukkitTask tickTask;
   private int attackCooldown;
   private boolean mounted;
@@ -93,6 +98,8 @@ public final class ActivePetImpl implements ActivePet {
     stand.setCustomNameVisible(true);
     this.armorStand = stand;
 
+    initializeModel(stand);
+
     tickTask = Bukkit.getScheduler().runTaskTimer(service.getPlugin(), this::tick, 10L, 10L);
     currentTalents.forEach(talent -> talent.onSummon(this));
     if (currentRecord.flightUnlocked()) {
@@ -106,6 +113,9 @@ public final class ActivePetImpl implements ActivePet {
     if (armorStand != null) {
       armorStand.customName(Component.text(record.displayName()));
       armorStand.setCustomNameVisible(true);
+    }
+    if (modelInstance != null) {
+      ensureIdleAnimation();
     }
   }
 
@@ -133,6 +143,10 @@ public final class ActivePetImpl implements ActivePet {
       }
     }
     if (armorStand != null) {
+      if (modelInstance != null) {
+        modelInstance.destroy();
+        modelInstance = null;
+      }
       armorStand.remove();
       armorStand = null;
     }
@@ -237,6 +251,11 @@ public final class ActivePetImpl implements ActivePet {
     stand.teleport(targetLocation);
     currentTalents.forEach(talent -> talent.tick(this));
 
+    BlockbenchModelInstance animator = modelInstance;
+    if (animator != null) {
+      animator.tick(ANIMATION_TICK_SECONDS);
+    }
+
     handleHealing();
     handleCombat(stand);
     if (flying) {
@@ -274,6 +293,7 @@ public final class ActivePetImpl implements ActivePet {
       dealDamage(target, finalDamage);
       Monster finalTarget = target;
       currentTalents.forEach(talent -> talent.onAttack(this, finalTarget, finalDamage));
+      playOnceIfSupported("attack");
       attackCooldown = Math.max(2, (int) (6 - statValue(StatType.MAGIC) / 4));
     }
   }
@@ -288,5 +308,40 @@ public final class ActivePetImpl implements ActivePet {
                 + target.getName()
                 + " for "
                 + String.format(Locale.US, "%.1f", amount)));
+  }
+
+  private void initializeModel(ArmorStand stand) {
+    String modelId = service.getConfigValues().getDefaultModelId();
+    if (!service.blockbench().hasModel(modelId)) {
+      service
+          .getPlugin()
+          .getLogger()
+          .warning(() -> "No Blockbench model registered with id '" + modelId + "'");
+      return;
+    }
+    BlockbenchModelInstance instance =
+        service.blockbench().createInstance(modelId, new ArmorStandPoseTarget(stand));
+    this.modelInstance = instance;
+    ensureIdleAnimation();
+  }
+
+  private void ensureIdleAnimation() {
+    if (modelInstance == null) {
+      return;
+    }
+    if (service.blockbench().animations(modelInstance.modelId()).contains("idle")) {
+      modelInstance.playLoop("idle");
+      modelInstance.tick(0.0);
+    }
+  }
+
+  private void playOnceIfSupported(String animation) {
+    BlockbenchModelInstance animator = modelInstance;
+    if (animator == null) {
+      return;
+    }
+    if (service.blockbench().animations(animator.modelId()).contains(animation)) {
+      animator.playOnce(animation);
+    }
   }
 }

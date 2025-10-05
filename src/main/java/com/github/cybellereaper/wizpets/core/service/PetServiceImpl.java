@@ -7,11 +7,12 @@ import com.github.cybellereaper.wizpets.api.StatSet;
 import com.github.cybellereaper.wizpets.api.StatType;
 import com.github.cybellereaper.wizpets.api.SummonReason;
 import com.github.cybellereaper.wizpets.api.WizPetsApi;
+import com.github.cybellereaper.wizpets.api.model.blockbench.BlockbenchModelEngine;
+import com.github.cybellereaper.wizpets.api.persistence.PetPersistence;
 import com.github.cybellereaper.wizpets.api.talent.TalentFactory;
 import com.github.cybellereaper.wizpets.api.talent.TalentRegistryView;
 import com.github.cybellereaper.wizpets.api.timeline.PetLifecycleListener;
 import com.github.cybellereaper.wizpets.core.config.PluginConfig;
-import com.github.cybellereaper.wizpets.core.persistence.PetStorage;
 import com.github.cybellereaper.wizpets.core.pet.ActivePetImpl;
 import com.github.cybellereaper.wizpets.core.service.BreedingEngine.BreedOutcome;
 import com.github.cybellereaper.wizpets.core.service.PetTalentResolver.ResolvedTalents;
@@ -48,10 +49,11 @@ import org.jooq.lambda.Seq;
 public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable {
   private final JavaPlugin plugin;
   private final PluginConfig config;
-  private final PetStorage storage;
+  private final PetPersistence storage;
   private final TalentRegistryImpl registry;
   private final PetTalentResolver talentResolver;
   private final BreedingEngine breedingEngine;
+  private final BlockbenchModelEngine blockbench;
   private final Set<PetLifecycleListener> listeners = new CopyOnWriteArraySet<>();
   private final Map<UUID, ActivePetImpl> activePets = new ConcurrentHashMap<>();
   private final SplittableGenerator random;
@@ -61,7 +63,8 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
   public PetServiceImpl(
       @NonNull JavaPlugin plugin,
       @NonNull PluginConfig config,
-      @NonNull PetStorage storage,
+      @NonNull PetPersistence storage,
+      @NonNull BlockbenchModelEngine blockbench,
       @NonNull TalentRegistryImpl registry,
       @NonNull PetTalentResolver talentResolver,
       @NonNull BreedingEngine breedingEngine,
@@ -73,6 +76,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
     this.registry = registry;
     this.talentResolver = talentResolver;
     this.breedingEngine = breedingEngine;
+    this.blockbench = blockbench;
     this.random = random;
     this.executor = executor;
     registerDefaults();
@@ -91,6 +95,16 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
   }
 
   @Override
+  public PetPersistence persistence() {
+    return storage;
+  }
+
+  @Override
+  public BlockbenchModelEngine blockbench() {
+    return blockbench;
+  }
+
+  @Override
   public ActivePet activePet(Player player) {
     return activePets.get(player.getUniqueId());
   }
@@ -106,8 +120,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
         .peek(pet -> storage.save(player, pet.toRecord()))
         .peek(pet -> pet.remove(true));
 
-    PetRecord baseline =
-        Option.ofOptional(storage.load(player)).getOrElse(() -> createNewRecord(player));
+    PetRecord baseline = storage.loadOrCreate(player, () -> createNewRecord(player));
     ResolvedTalents resolved = talentResolver.resolve(baseline);
     ActivePetImpl pet = new ActivePetImpl(this, player, resolved.record(), resolved.talents());
     pet.spawn();
@@ -255,8 +268,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
 
   @Override
   public void breed(Player player, Player partner) {
-    PetRecord playerRecord =
-        Option.ofOptional(storage.load(player)).getOrElse(() -> createNewRecord(player));
+    PetRecord playerRecord = storage.loadOrCreate(player, () -> createNewRecord(player));
     PetRecord partnerRecord = storage.load(partner).orElse(null);
     if (partnerRecord == null) {
       return;
@@ -328,7 +340,6 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
             0,
             false,
             false);
-    storage.save(player, record);
     return record;
   }
 

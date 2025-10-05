@@ -2,19 +2,22 @@ package com.github.cybellereaper.wizpets.core.persistence;
 
 import com.github.cybellereaper.wizpets.api.PetRecord;
 import com.github.cybellereaper.wizpets.api.StatSet;
+import com.github.cybellereaper.wizpets.api.persistence.PetPersistence;
 import com.google.common.collect.ImmutableList;
 import io.vavr.control.Option;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import lombok.NonNull;
 import org.bukkit.NamespacedKey;
-import org.bukkit.entity.Player;
+import org.bukkit.persistence.PersistentDataAdapterContext;
 import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.persistence.PersistentDataHolder;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jooq.lambda.Seq;
 
-public final class PetStorage {
+public final class PetStorage implements PetPersistence {
   private final NamespacedKey rootKey;
   private final NamespacedKey nameKey;
   private final NamespacedKey generationKey;
@@ -49,21 +52,50 @@ public final class PetStorage {
     ivMagicKey = new NamespacedKey(plugin, "iv_magic");
   }
 
-  public Optional<PetRecord> load(@NonNull Player player) {
-    return Option.of(player)
-        .map(Player::getPersistentDataContainer)
-        .flatMap(container -> Option.of(container.get(rootKey, PersistentDataType.TAG_CONTAINER)))
-        .flatMap(
-            container ->
-                Option.of(container.get(nameKey, PersistentDataType.STRING))
-                    .filter(name -> !name.isBlank())
-                    .map(name -> buildRecord(container, name)))
-        .toJavaOptional();
+  @Override
+  public Optional<PetRecord> load(@NonNull PersistentDataHolder holder) {
+    return decodeFromParent(holder.getPersistentDataContainer());
   }
 
-  public void save(@NonNull Player player, @NonNull PetRecord record) {
-    PersistentDataContainer parent = player.getPersistentDataContainer();
-    PersistentDataContainer container = parent.getAdapterContext().newPersistentDataContainer();
+  @Override
+  public void save(@NonNull PersistentDataHolder holder, @NonNull PetRecord record) {
+    PersistentDataContainer parent = holder.getPersistentDataContainer();
+    PersistentDataContainer container = encode(parent.getAdapterContext(), record);
+    parent.set(rootKey, PersistentDataType.TAG_CONTAINER, container);
+  }
+
+  @Override
+  public void clear(@NonNull PersistentDataHolder holder) {
+    holder.getPersistentDataContainer().remove(rootKey);
+  }
+
+  @Override
+  public boolean exists(@NonNull PersistentDataHolder holder) {
+    return holder.getPersistentDataContainer().has(rootKey, PersistentDataType.TAG_CONTAINER);
+  }
+
+  @Override
+  public Optional<PetRecord> compute(
+      @NonNull PersistentDataHolder holder,
+      @NonNull Function<Optional<PetRecord>, Optional<PetRecord>> operation) {
+    PersistentDataContainer parent = holder.getPersistentDataContainer();
+    Optional<PetRecord> current = decodeFromParent(parent);
+    Optional<PetRecord> result = operation.apply(current);
+    if (result == null) {
+      throw new NullPointerException("Operation must not return null");
+    }
+    if (result.isPresent()) {
+      save(holder, result.get());
+    } else {
+      clear(holder);
+    }
+    return result;
+  }
+
+  @Override
+  public PersistentDataContainer encode(
+      @NonNull PersistentDataAdapterContext context, @NonNull PetRecord record) {
+    PersistentDataContainer container = context.newPersistentDataContainer();
 
     container.set(nameKey, PersistentDataType.STRING, record.displayName());
     container.set(generationKey, PersistentDataType.INTEGER, record.generation());
@@ -82,11 +114,21 @@ public final class PetStorage {
     container.set(ivDefenseKey, PersistentDataType.DOUBLE, record.ivs().defense());
     container.set(ivMagicKey, PersistentDataType.DOUBLE, record.ivs().magic());
 
-    parent.set(rootKey, PersistentDataType.TAG_CONTAINER, container);
+    return container;
   }
 
-  public void clear(@NonNull Player player) {
-    player.getPersistentDataContainer().remove(rootKey);
+  @Override
+  public Optional<PetRecord> decode(@NonNull PersistentDataContainer container) {
+    return Option.of(container.get(nameKey, PersistentDataType.STRING))
+        .filter(name -> !name.isBlank())
+        .map(name -> buildRecord(container, name))
+        .toJavaOptional();
+  }
+
+  private Optional<PetRecord> decodeFromParent(PersistentDataContainer parent) {
+    return Option.of(parent.get(rootKey, PersistentDataType.TAG_CONTAINER))
+        .flatMap(container -> Option.ofOptional(decode(container)))
+        .toJavaOptional();
   }
 
   private PetRecord buildRecord(PersistentDataContainer container, String name) {

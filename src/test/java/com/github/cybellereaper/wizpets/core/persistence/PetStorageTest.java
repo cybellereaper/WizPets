@@ -1,41 +1,38 @@
 package com.github.cybellereaper.wizpets.core.persistence;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.cybellereaper.wizpets.api.PetRecord;
 import com.github.cybellereaper.wizpets.api.StatSet;
 import com.github.cybellereaper.wizpets.api.StatType;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
+import com.github.cybellereaper.wizpets.testing.persistence.InMemoryPersistentDataContainer;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
-import org.bukkit.persistence.PersistentDataAdapterContext;
-import org.bukkit.persistence.PersistentDataContainer;
-import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 class PetStorageTest {
+  private JavaPlugin plugin;
   private Player player;
   private PetStorage storage;
-  private InMemoryContainer container;
+  private InMemoryPersistentDataContainer container;
 
   @BeforeEach
   void setUp() {
-    JavaPlugin plugin = Mockito.mock(JavaPlugin.class);
+    plugin = Mockito.mock(JavaPlugin.class);
     Mockito.when(plugin.getName()).thenReturn("wizpets-test");
     Mockito.when(plugin.namespace()).thenReturn("wizpets-test");
     storage = new PetStorage(plugin);
 
-    container = new InMemoryContainer();
+    container = new InMemoryPersistentDataContainer();
     player = Mockito.mock(Player.class, Mockito.RETURNS_DEEP_STUBS);
     Mockito.when(player.getName()).thenReturn("Althea");
     Mockito.when(player.getUniqueId()).thenReturn(UUID.randomUUID());
@@ -95,75 +92,125 @@ class PetStorageTest {
     assertTrue(loaded.talentIds().isEmpty());
   }
 
-  private static final class InMemoryContainer implements PersistentDataContainer {
-    private final Map<NamespacedKey, Object> store = new HashMap<>();
+  @Test
+  void encodeAndDecodeRoundTripMatchesRecord() {
+    PetRecord original =
+        new PetRecord(
+            "Nebula",
+            new StatSet(11.0, 9.5, 6.25, 4.75),
+            new StatSet(3.0, 5.0, 7.0, 2.0),
+            java.util.List.of("guardian_shell"),
+            2,
+            1,
+            true,
+            false);
 
-    @Override
-    public <P, C> void set(NamespacedKey key, PersistentDataType<P, C> type, C value) {
-      store.put(key, value);
-    }
+    PetRecord decoded =
+        storage.decode(storage.encode(container.getAdapterContext(), original)).orElseThrow();
+    assertEquals(original, decoded);
+  }
 
-    @Override
-    public void remove(NamespacedKey key) {
-      store.remove(key);
-    }
+  @Test
+  void decodeReturnsEmptyWhenNameMissing() {
+    assertTrue(
+        storage
+            .decode(container.getAdapterContext().newPersistentDataContainer())
+            .isEmpty());
+  }
 
-    @Override
-    public void readFromBytes(byte[] bytes, boolean clear) throws IOException {
-      throw new IOException("Not supported in tests");
-    }
+  @Test
+  void clearRemovesStoredRootKey() {
+    storage.save(player, baseline("Aurora"));
+    storage.clear(player);
 
-    @Override
-    public <P, C> boolean has(NamespacedKey key, PersistentDataType<P, C> type) {
-      return store.containsKey(key);
-    }
+    NamespacedKey rootKey = new NamespacedKey(plugin, "pet");
+    assertFalse(container.has(rootKey));
+  }
 
-    @Override
-    public boolean has(NamespacedKey key) {
-      return store.containsKey(key);
-    }
+  @Test
+  void existsReflectsPresenceOfStoredRecord() {
+    assertFalse(storage.exists(player));
+    storage.save(player, baseline("Aurora"));
+    assertTrue(storage.exists(player));
+  }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public <P, C> C get(NamespacedKey key, PersistentDataType<P, C> type) {
-      return (C) store.get(key);
-    }
+  @Test
+  void loadOrCreatePersistsGeneratedRecordOnce() {
+    AtomicInteger invocations = new AtomicInteger();
+    PetRecord generated = baseline("Aurora");
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public <P, C> C getOrDefault(NamespacedKey key, PersistentDataType<P, C> type, C defaultValue) {
-      return (C) store.getOrDefault(key, defaultValue);
-    }
+    PetRecord first =
+        storage.loadOrCreate(
+            player,
+            () -> {
+              invocations.incrementAndGet();
+              return generated;
+            });
+    assertEquals(1, invocations.get());
+    assertEquals(generated, first);
 
-    @Override
-    public Set<NamespacedKey> getKeys() {
-      return new HashSet<>(store.keySet());
-    }
+    PetRecord second =
+        storage.loadOrCreate(
+            player,
+            () -> {
+              invocations.incrementAndGet();
+              return baseline("Should not be used");
+            });
 
-    @Override
-    public boolean isEmpty() {
-      return store.isEmpty();
-    }
+    assertEquals(1, invocations.get());
+    assertEquals(generated, second);
+  }
 
-    @Override
-    public void copyTo(PersistentDataContainer other, boolean replace) {
-      if (!(other instanceof InMemoryContainer target)) {
-        throw new UnsupportedOperationException("Unsupported container type");
-      }
-      if (replace) {
-        target.store.clear();
-      }
-      target.store.putAll(store);
-    }
+  @Test
+  void computeSupportsAtomicCreationAndRemoval() {
+    Optional<PetRecord> created =
+        storage.compute(
+            player,
+            existing -> {
+              assertTrue(existing.isEmpty());
+              return Optional.of(baseline("Aurora"));
+            });
 
-    @Override
-    public PersistentDataAdapterContext getAdapterContext() {
-      return () -> new InMemoryContainer();
-    }
+    assertTrue(created.isPresent());
+    assertTrue(storage.exists(player));
 
-    @Override
-    public byte[] serializeToBytes() throws IOException {
-      throw new IOException("Not supported in tests");
-    }
+    Optional<PetRecord> removed =
+        storage.compute(
+            player,
+            existing -> {
+              assertTrue(existing.isPresent());
+              return Optional.empty();
+            });
+
+    assertTrue(removed.isEmpty());
+    assertFalse(storage.exists(player));
+  }
+
+  @Test
+  void computeUpdatesExistingRecordUsingLatestState() {
+    storage.save(player, baseline("Aurora"));
+
+    Optional<PetRecord> updated =
+        storage.compute(
+            player,
+            existing -> {
+              assertEquals("Aurora", existing.orElseThrow().displayName());
+              return existing.map(record -> record.withDisplayName("Nebula"));
+            });
+
+    assertEquals("Nebula", updated.orElseThrow().displayName());
+    assertEquals("Nebula", storage.load(player).orElseThrow().displayName());
+  }
+
+  private PetRecord baseline(String name) {
+    return new PetRecord(
+        name,
+        new StatSet(20.0, 15.5, 10.0, 12.5),
+        new StatSet(10.0, 8.0, 6.0, 9.0),
+        java.util.List.of("healing_aura"),
+        3,
+        2,
+        true,
+        true);
   }
 }
