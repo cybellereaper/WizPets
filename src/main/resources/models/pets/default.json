@@ -1,0 +1,52 @@
+{
+  "bones": [
+    { "name": "body", "target": "BODY" },
+    { "name": "head", "parent": "body", "target": "HEAD" },
+    { "name": "left_arm", "parent": "body", "target": "LEFT_ARM" },
+    { "name": "right_arm", "parent": "body", "target": "RIGHT_ARM" },
+    { "name": "left_leg", "parent": "body", "target": "LEFT_LEG" },
+    { "name": "right_leg", "parent": "body", "target": "RIGHT_LEG" }
+  ],
+  "animations": {
+    "idle": {
+      "length": 2.0,
+      "loop": true,
+      "bones": {
+        "head": {
+          "rotation": [
+            { "time": 0.0, "vector": [0.0, 0.0, 0.0] },
+            { "time": 1.0, "vector": [10.0, 10.0, 0.0] },
+            { "time": 2.0, "vector": [0.0, 0.0, 0.0] }
+          ]
+        },
+        "left_arm": {
+          "rotation": [
+            { "time": 0.0, "vector": [-20.0, 0.0, 0.0] },
+            { "time": 1.0, "vector": [-10.0, 0.0, 0.0] },
+            { "time": 2.0, "vector": [-20.0, 0.0, 0.0] }
+          ]
+        },
+        "right_arm": {
+          "rotation": [
+            { "time": 0.0, "vector": [-20.0, 0.0, 0.0] },
+            { "time": 1.0, "vector": [-30.0, 0.0, 0.0] },
+            { "time": 2.0, "vector": [-20.0, 0.0, 0.0] }
+          ]
+        }
+      }
+    },
+    "attack": {
+      "length": 0.8,
+      "loop": false,
+      "bones": {
+        "right_arm": {
+          "rotation": [
+            { "time": 0.0, "vector": [-20.0, 0.0, 0.0] },
+            { "time": 0.4, "vector": [-90.0, 0.0, 0.0] },
+            { "time": 0.8, "vector": [-20.0, 0.0, 0.0] }
+          ]
+        }
+      }
+    }
+  }
+}

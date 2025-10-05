@@ -20,4 +20,8 @@ public record PluginConfig(@NonNull FileConfiguration configuration) {
   public String getDefaultPetName() {
     return configuration.getString("defaults.displayName", "Wisp Familiar");
   }
+
+  public String getDefaultModelId() {
+    return configuration.getString("defaults.modelId", "wizpet_default");
+  }
 }

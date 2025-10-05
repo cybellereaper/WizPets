@@ -24,6 +24,7 @@ dependencies {
     implementation("org.jooq:jool:0.9.15")
     implementation("io.vavr:vavr:0.10.4")
     implementation("com.google.guava:guava:33.2.1-jre")
+    implementation("com.google.code.gson:gson:2.11.0")
     compileOnly("org.projectlombok:lombok:1.18.32")
     annotationProcessor("org.projectlombok:lombok:1.18.32")
     testImplementation(platform("org.junit:junit-bom:5.10.2"))

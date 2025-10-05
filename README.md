@@ -12,6 +12,7 @@ The codebase has been completely rewritten around a modular service architecture
 - **Mounting and aerial travel** so players can ride their pet and unlock flight assistance.
 - **Automatic cleanup** of armor stands on player disconnects and server shutdown to prevent lingering entities.
 - **Actionable debugging** via `/wizpet debug` to inspect saved data and detailed logging for key lifecycle events.
+- **Modern Blockbench animations** powering armor stand poses, including idle and combat sequences driven by a reusable model engine.
 
 ## Commands
 
@@ -57,6 +58,7 @@ The API lets you:
 - Summon or dismiss pets with explicit reasons for traceability.
 - Register and unregister custom talents at runtime with `registerTalent` / `unregisterTalent`.
 - Subscribe to lifecycle callbacks through `addListener` to react to summons, dismissals, and saves.
+- Drive custom models and animations through the Blockbench engine exposed via `blockbench()`, letting other plugins register new model files or create bespoke animators.
 
 Custom talents implement `PetTalent` and can manipulate stats, react to ticks, or respond to attacks. Register a talent factory to make it available to players:
 

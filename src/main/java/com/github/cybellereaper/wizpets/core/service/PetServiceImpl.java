@@ -7,6 +7,7 @@ import com.github.cybellereaper.wizpets.api.StatSet;
 import com.github.cybellereaper.wizpets.api.StatType;
 import com.github.cybellereaper.wizpets.api.SummonReason;
 import com.github.cybellereaper.wizpets.api.WizPetsApi;
+import com.github.cybellereaper.wizpets.api.model.blockbench.BlockbenchModelEngine;
 import com.github.cybellereaper.wizpets.api.persistence.PetPersistence;
 import com.github.cybellereaper.wizpets.api.talent.TalentFactory;
 import com.github.cybellereaper.wizpets.api.talent.TalentRegistryView;
@@ -52,6 +53,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
   private final TalentRegistryImpl registry;
   private final PetTalentResolver talentResolver;
   private final BreedingEngine breedingEngine;
+  private final BlockbenchModelEngine blockbench;
   private final Set<PetLifecycleListener> listeners = new CopyOnWriteArraySet<>();
   private final Map<UUID, ActivePetImpl> activePets = new ConcurrentHashMap<>();
   private final SplittableGenerator random;
@@ -62,6 +64,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
       @NonNull JavaPlugin plugin,
       @NonNull PluginConfig config,
       @NonNull PetPersistence storage,
+      @NonNull BlockbenchModelEngine blockbench,
       @NonNull TalentRegistryImpl registry,
       @NonNull PetTalentResolver talentResolver,
       @NonNull BreedingEngine breedingEngine,
@@ -73,6 +76,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
     this.registry = registry;
     this.talentResolver = talentResolver;
     this.breedingEngine = breedingEngine;
+    this.blockbench = blockbench;
     this.random = random;
     this.executor = executor;
     registerDefaults();
@@ -93,6 +97,11 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
   @Override
   public PetPersistence persistence() {
     return storage;
+  }
+
+  @Override
+  public BlockbenchModelEngine blockbench() {
+    return blockbench;
   }
 
   @Override
