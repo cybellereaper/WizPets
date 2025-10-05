@@ -7,13 +7,14 @@ import com.github.cybellereaper.wizpets.api.StatSet;
 import com.github.cybellereaper.wizpets.api.StatType;
 import com.github.cybellereaper.wizpets.api.SummonReason;
 import com.github.cybellereaper.wizpets.api.WizPetsApi;
-import com.github.cybellereaper.wizpets.api.talent.PetTalent;
 import com.github.cybellereaper.wizpets.api.talent.TalentFactory;
 import com.github.cybellereaper.wizpets.api.talent.TalentRegistryView;
 import com.github.cybellereaper.wizpets.api.timeline.PetLifecycleListener;
 import com.github.cybellereaper.wizpets.core.config.PluginConfig;
 import com.github.cybellereaper.wizpets.core.persistence.PetStorage;
 import com.github.cybellereaper.wizpets.core.pet.ActivePetImpl;
+import com.github.cybellereaper.wizpets.core.service.BreedingEngine.BreedOutcome;
+import com.github.cybellereaper.wizpets.core.service.PetTalentResolver.ResolvedTalents;
 import com.github.cybellereaper.wizpets.core.talent.TalentRegistryImpl;
 import com.github.cybellereaper.wizpets.core.talent.defaults.ArcaneBurstTalent;
 import com.github.cybellereaper.wizpets.core.talent.defaults.GuardianShellTalent;
@@ -21,19 +22,17 @@ import com.github.cybellereaper.wizpets.core.talent.defaults.HealingAuraTalent;
 import io.vavr.control.Option;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.random.RandomGenerator;
+import java.util.random.RandomGenerator.SplittableGenerator;
 import lombok.NonNull;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -51,9 +50,11 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
   private final PluginConfig config;
   private final PetStorage storage;
   private final TalentRegistryImpl registry;
+  private final PetTalentResolver talentResolver;
+  private final BreedingEngine breedingEngine;
   private final Set<PetLifecycleListener> listeners = new CopyOnWriteArraySet<>();
   private final Map<UUID, ActivePetImpl> activePets = new ConcurrentHashMap<>();
-  private final RandomGenerator random;
+  private final SplittableGenerator random;
   private final ExecutorService executor;
 
   @Inject
@@ -62,12 +63,16 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
       @NonNull PluginConfig config,
       @NonNull PetStorage storage,
       @NonNull TalentRegistryImpl registry,
-      @NonNull RandomGenerator random,
+      @NonNull PetTalentResolver talentResolver,
+      @NonNull BreedingEngine breedingEngine,
+      @NonNull SplittableGenerator random,
       @NonNull ExecutorService executor) {
     this.plugin = plugin;
     this.config = config;
     this.storage = storage;
     this.registry = registry;
+    this.talentResolver = talentResolver;
+    this.breedingEngine = breedingEngine;
     this.random = random;
     this.executor = executor;
     registerDefaults();
@@ -103,7 +108,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
 
     PetRecord baseline =
         Option.ofOptional(storage.load(player)).getOrElse(() -> createNewRecord(player));
-    ResolvedTalents resolved = resolveTalents(baseline);
+    ResolvedTalents resolved = talentResolver.resolve(baseline);
     ActivePetImpl pet = new ActivePetImpl(this, player, resolved.record(), resolved.talents());
     pet.spawn();
     activePets.put(player.getUniqueId(), pet);
@@ -253,18 +258,20 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
       return;
     }
 
-    BreedOutcome outcome = buildBreedOutcome(player, playerRecord, partnerRecord);
+    BreedOutcome outcome = breedingEngine.breed(player, playerRecord, partnerRecord);
 
     storage.save(player, outcome.childRecord());
     listeners.forEach(listener -> listener.onPersist(player, outcome.childRecord()));
     summon(player, SummonReason.BREEDING_REFRESH);
 
-    storage.save(partner, outcome.partnerRecord());
-    listeners.forEach(listener -> listener.onPersist(partner, outcome.partnerRecord()));
+    storage.save(partner, outcome.updatedPartnerRecord());
+    listeners.forEach(listener -> listener.onPersist(partner, outcome.updatedPartnerRecord()));
     Option.of(activePets.get(partner.getUniqueId()))
         .peek(
             pet -> {
-              ResolvedTalents resolved = resolveTalents(outcome.partnerRecord());
+              PetRecord partnerBaseline =
+                  storage.load(partner).orElse(outcome.updatedPartnerRecord());
+              ResolvedTalents resolved = talentResolver.resolve(partnerBaseline);
               storage.save(partner, resolved.record());
               pet.update(resolved.record(), resolved.talents());
             });
@@ -305,12 +312,13 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
   }
 
   private PetRecord createNewRecord(Player player) {
+    SplittableGenerator branch = random.split();
     PetRecord record =
         new PetRecord(
             config.getDefaultPetName().replace("{player}", player.getName()),
-            StatSet.randomEV(random),
-            StatSet.randomIV(random),
-            registry.roll(random),
+            StatSet.randomEV(branch.split()),
+            StatSet.randomIV(branch.split()),
+            registry.roll(branch),
             1,
             0,
             false,
@@ -326,7 +334,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
             pet -> {
               Player owner = pet.getOwner();
               PetRecord baseline = storage.load(owner).orElse(pet.toRecord());
-              ResolvedTalents resolved = resolveTalents(baseline);
+              ResolvedTalents resolved = talentResolver.resolve(baseline);
               storage.save(owner, resolved.record());
               pet.update(resolved.record(), resolved.talents());
             });
@@ -336,23 +344,6 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
     registry.register(HealingAuraTalent::new);
     registry.register(GuardianShellTalent::new);
     registry.register(ArcaneBurstTalent::new);
-  }
-
-  private ResolvedTalents resolveTalents(PetRecord record) {
-    PetRecord sanitized = ensureTalentIds(record);
-    List<PetTalent> talents =
-        CompletableFuture.supplyAsync(() -> registry.instantiate(sanitized.talentIds()), executor)
-            .join();
-    return new ResolvedTalents(sanitized, talents);
-  }
-
-  private PetRecord ensureTalentIds(PetRecord record) {
-    List<PetTalent> preview = registry.instantiate(record.talentIds());
-    if (preview.size() != record.talentIds().size() || preview.isEmpty()) {
-      List<String> ids = registry.roll(random);
-      return record.withTalentIds(ids);
-    }
-    return record;
   }
 
   @EventHandler
@@ -379,27 +370,5 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
       Thread.currentThread().interrupt();
       executor.shutdownNow();
     }
-  }
-
-  private record ResolvedTalents(PetRecord record, List<PetTalent> talents) {}
-
-  private record BreedOutcome(PetRecord childRecord, PetRecord partnerRecord) {}
-
-  private BreedOutcome buildBreedOutcome(
-      Player player, PetRecord playerRecord, PetRecord partnerRecord) {
-    int generation = Math.max(playerRecord.generation(), partnerRecord.generation()) + 1;
-    PetRecord childRecord =
-        new PetRecord(
-            MessageFormat.format("{0}'s Hatchling", player.getName()),
-            playerRecord.evs().breedWith(partnerRecord.evs(), random),
-            playerRecord.ivs().breedWith(partnerRecord.ivs(), random),
-            registry.inherit(playerRecord.talentIds(), partnerRecord.talentIds(), random),
-            generation,
-            playerRecord.breedCount() + 1,
-            playerRecord.mountUnlocked() || partnerRecord.mountUnlocked(),
-            playerRecord.flightUnlocked() || partnerRecord.flightUnlocked());
-
-    PetRecord updatedPartner = partnerRecord.withBreedCount(partnerRecord.breedCount() + 1);
-    return new BreedOutcome(childRecord, updatedPartner);
   }
 }

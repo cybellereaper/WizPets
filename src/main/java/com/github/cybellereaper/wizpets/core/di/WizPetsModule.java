@@ -6,10 +6,10 @@ import com.github.cybellereaper.wizpets.core.talent.TalentRegistryImpl;
 import dagger.Module;
 import dagger.Provides;
 import jakarta.inject.Singleton;
+import java.util.SplittableRandom;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.random.RandomGenerator;
-import java.util.random.RandomGeneratorFactory;
+import java.util.random.RandomGenerator.SplittableGenerator;
 import org.bukkit.plugin.java.JavaPlugin;
 
 @Module
@@ -36,8 +36,8 @@ public final class WizPetsModule {
 
   @Provides
   @Singleton
-  static RandomGenerator randomGenerator() {
-    return RandomGeneratorFactory.of("L64X128MixRandom").create(System.nanoTime());
+  static SplittableGenerator randomGenerator() {
+    return new SplittableRandom(System.nanoTime());
   }
 
   @Provides
