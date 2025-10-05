@@ -5,4 +5,53 @@ api-version: '1.21'
 commands:
   wizpet:
     description: Manage your magical companion.
-    usage: /<command> [summon|dismiss|stats|talents]
+    usage: /<command> <help|summon|dismiss|stats|talents|mount|dismount|fly|land|breed|debug>
+permissions:
+  wizpets.command.*:
+    description: Access to all WizPets commands.
+    default: true
+    children:
+      wizpets.command.help: true
+      wizpets.command.summon: true
+      wizpets.command.dismiss: true
+      wizpets.command.stats: true
+      wizpets.command.talents: true
+      wizpets.command.mount: true
+      wizpets.command.dismount: true
+      wizpets.command.fly: true
+      wizpets.command.land: true
+      wizpets.command.breed: true
+      wizpets.command.debug: false
+  wizpets.command.help:
+    description: View WizPets help information.
+    default: true
+  wizpets.command.summon:
+    description: Summon or respawn your pet.
+    default: true
+  wizpets.command.dismiss:
+    description: Dismiss your pet.
+    default: true
+  wizpets.command.stats:
+    description: View pet statistics.
+    default: true
+  wizpets.command.talents:
+    description: View pet talents.
+    default: true
+  wizpets.command.mount:
+    description: Ride your pet.
+    default: true
+  wizpets.command.dismount:
+    description: Stop riding your pet.
+    default: true
+  wizpets.command.fly:
+    description: Enable flight with your pet.
+    default: true
+  wizpets.command.land:
+    description: Land and disable pet flight.
+    default: true
+  wizpets.command.breed:
+    description: Breed your pet with another player's.
+    default: op
+  wizpets.command.debug:
+    description: View raw WizPets debug data.
+    default: op

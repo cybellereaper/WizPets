@@ -1,7 +1,9 @@
 plugins {
-    kotlin("jvm") version "2.2.20"
+    java
     id("com.gradleup.shadow") version "8.3.0"
     id("xyz.jpenilla.run-paper") version "2.3.1"
+    id("com.diffplug.spotless") version "6.25.0"
+    id("net.ltgt.errorprone") version "3.1.0"
 }
 
 group = "com.github.cybellereaper"
@@ -16,9 +18,20 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    testImplementation(kotlin("test"))
+    implementation("com.google.dagger:dagger:2.51.1")
+    implementation("jakarta.inject:jakarta.inject-api:2.0.1")
+    annotationProcessor("com.google.dagger:dagger-compiler:2.51.1")
+    implementation("org.jooq:jool:0.9.15")
+    implementation("io.vavr:vavr:0.10.4")
+    implementation("com.google.guava:guava:33.2.1-jre")
+    compileOnly("org.projectlombok:lombok:1.18.32")
+    annotationProcessor("org.projectlombok:lombok:1.18.32")
+    testImplementation(platform("org.junit:junit-bom:5.10.2"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
+    testImplementation("org.mockito:mockito-core:5.12.0")
+    testImplementation("com.tngtech.archunit:archunit-junit5:1.3.0")
+    errorprone("com.google.errorprone:error_prone_core:2.29.2")
 }
 
 tasks {
@@ -27,9 +40,10 @@ tasks {
     }
 }
 
-val targetJavaVersion = 21
-kotlin {
-    jvmToolchain(targetJavaVersion)
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
 }
 
 tasks.build {
@@ -38,6 +52,13 @@ tasks.build {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+spotless {
+    java {
+        target("src/**/*.java")
+        googleJavaFormat("1.17.0")
+    }
 }
 
 tasks.processResources {
