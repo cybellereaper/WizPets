@@ -7,6 +7,7 @@ import com.google.common.collect.ImmutableList;
 import io.vavr.control.Option;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import lombok.NonNull;
 import org.bukkit.NamespacedKey;
 import org.bukkit.persistence.PersistentDataAdapterContext;
@@ -53,11 +54,7 @@ public final class PetStorage implements PetPersistence {
 
   @Override
   public Optional<PetRecord> load(@NonNull PersistentDataHolder holder) {
-    return Option.of(holder)
-        .map(PersistentDataHolder::getPersistentDataContainer)
-        .flatMap(container -> Option.of(container.get(rootKey, PersistentDataType.TAG_CONTAINER)))
-        .flatMap(container -> Option.ofOptional(decode(container)))
-        .toJavaOptional();
+    return decodeFromParent(holder.getPersistentDataContainer());
   }
 
   @Override
@@ -70,6 +67,29 @@ public final class PetStorage implements PetPersistence {
   @Override
   public void clear(@NonNull PersistentDataHolder holder) {
     holder.getPersistentDataContainer().remove(rootKey);
+  }
+
+  @Override
+  public boolean exists(@NonNull PersistentDataHolder holder) {
+    return holder.getPersistentDataContainer().has(rootKey, PersistentDataType.TAG_CONTAINER);
+  }
+
+  @Override
+  public Optional<PetRecord> compute(
+      @NonNull PersistentDataHolder holder,
+      @NonNull Function<Optional<PetRecord>, Optional<PetRecord>> operation) {
+    PersistentDataContainer parent = holder.getPersistentDataContainer();
+    Optional<PetRecord> current = decodeFromParent(parent);
+    Optional<PetRecord> result = operation.apply(current);
+    if (result == null) {
+      throw new NullPointerException("Operation must not return null");
+    }
+    if (result.isPresent()) {
+      save(holder, result.get());
+    } else {
+      clear(holder);
+    }
+    return result;
   }
 
   @Override
@@ -102,6 +122,12 @@ public final class PetStorage implements PetPersistence {
     return Option.of(container.get(nameKey, PersistentDataType.STRING))
         .filter(name -> !name.isBlank())
         .map(name -> buildRecord(container, name))
+        .toJavaOptional();
+  }
+
+  private Optional<PetRecord> decodeFromParent(PersistentDataContainer parent) {
+    return Option.of(parent.get(rootKey, PersistentDataType.TAG_CONTAINER))
+        .flatMap(container -> Option.ofOptional(decode(container)))
         .toJavaOptional();
   }
 

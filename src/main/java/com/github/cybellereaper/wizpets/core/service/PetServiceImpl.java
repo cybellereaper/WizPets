@@ -111,8 +111,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
         .peek(pet -> storage.save(player, pet.toRecord()))
         .peek(pet -> pet.remove(true));
 
-    PetRecord baseline =
-        Option.ofOptional(storage.load(player)).getOrElse(() -> createNewRecord(player));
+    PetRecord baseline = storage.loadOrCreate(player, () -> createNewRecord(player));
     ResolvedTalents resolved = talentResolver.resolve(baseline);
     ActivePetImpl pet = new ActivePetImpl(this, player, resolved.record(), resolved.talents());
     pet.spawn();
@@ -260,8 +259,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
 
   @Override
   public void breed(Player player, Player partner) {
-    PetRecord playerRecord =
-        Option.ofOptional(storage.load(player)).getOrElse(() -> createNewRecord(player));
+    PetRecord playerRecord = storage.loadOrCreate(player, () -> createNewRecord(player));
     PetRecord partnerRecord = storage.load(partner).orElse(null);
     if (partnerRecord == null) {
       return;
@@ -333,7 +331,6 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
             0,
             false,
             false);
-    storage.save(player, record);
     return record;
   }
 
