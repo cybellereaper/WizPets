@@ -1,83 +1,78 @@
 # WizPets
 
-WizPets is a Spigot/Paper plugin that gives every adventurer a magical companion. Pets heal, fight, fly, and even carry their owners thanks to an expanded persistent system backed by Bukkit's Persistent Data Containers (PDCs).
+WizPets is a Paper/Spigot plugin that gives every player a loyal magical companion. Pets orbit their owner, heal, fight, fly, and even act as living mounts, all while their data is stored safely inside Bukkit's Persistent Data Containers (PDCs). The project has been rebuilt around a modular service architecture, exposing an official API so other plugins can extend every part of the experience.
 
-The codebase has been completely rewritten around a modular service architecture that exposes an official developer API. Other plugins can safely interact with pets, listen for lifecycle events, and register their own talents at runtime.
+## Table of Contents
+- [Features](#features)
+- [Commands](#commands)
+- [Developer API](#developer-api)
+- [Data Model](#data-model)
+- [Building](#building)
+- [License](#license)
 
 ## Features
-
-- **Summonable combat familiars** that orbit their owner, heal them, and attack nearby monsters.
-- **Persistent progression** stored in PDCs, including EVs/IVs, generation, unlocked abilities, and talent selections – no YAML save files required.
-- **Breeding mechanic** that lets two players combine their pets to produce a higher-generation companion with blended stats and inherited talents.
-- **Mounting and aerial travel** so players can ride their pet and unlock flight assistance.
-- **Automatic cleanup** of armor stands on player disconnects and server shutdown to prevent lingering entities.
-- **Actionable debugging** via `/wizpet debug` to inspect saved data and detailed logging for key lifecycle events.
-- **Modern Blockbench animations** powering armor stand poses, including idle and combat sequences driven by a reusable model engine.
+- **Summonable familiars** that follow their owner, heal allies, and attack nearby monsters.
+- **Persistent progression** saved to per-player PDCs—no YAML files or manual serialization required.
+- **Breeding system** for combining two pets into a higher-generation companion with blended stats and inherited talents.
+- **Mounting and flight** so players can ride their pet and unlock aerial assistance.
+- **Automated cleanup** that removes tagged armor stands on disconnect and shutdown.
+- **Debug utilities** such as `/wizpet debug` and rich logging to inspect pet lifecycle events.
+- **Modern Blockbench animations** for all idle and combat poses, powered by a reusable model engine.
 
 ## Commands
-
 | Command | Description |
 | --- | --- |
-| `/wizpet summon` | Summon or respawn your active pet. |
-| `/wizpet dismiss` | Dismiss your current pet. |
-| `/wizpet stats` | View the calculated stats for your active pet. |
-| `/wizpet talents` | List your pet's talents. |
-| `/wizpet mount` | Mount and ride your pet. |
-| `/wizpet dismount` | Leave your pet's saddle. |
-| `/wizpet fly` | Enable assisted flight (unlocks the ability permanently). |
-| `/wizpet land` | Disable assisted flight and land safely. |
-| `/wizpet breed <player>` | Breed your pet with another player's pet to create a new generation. |
-| `/wizpet debug` | View stored pet data for diagnostics. |
-
-## Data Storage
-
-Every player has their pet data serialized into their personal `PersistentDataContainer`. This includes:
-
-- Display name
-- EVs/IVs
-- Talent identifiers
-- Generation and breeding count
-- Ability unlock flags (mounting, flight)
-
-Data is saved automatically whenever stats change, on logout, and during server shutdown. Orphaned armor stands tagged by the plugin are also cleaned up on disable.
+| `/wizpet summon` | Summon or respawn the active pet. |
+| `/wizpet dismiss` | Send the current pet away. |
+| `/wizpet stats` | Display calculated stats for the active pet. |
+| `/wizpet talents` | List unlocked talents. |
+| `/wizpet mount` | Mount and ride the pet. |
+| `/wizpet dismount` | Dismount from the pet. |
+| `/wizpet fly` | Toggle assisted flight once unlocked. |
+| `/wizpet land` | Disable flight and land safely. |
+| `/wizpet breed <player>` | Breed with another player's active pet. |
+| `/wizpet debug` | Inspect stored pet data for diagnostics. |
 
 ## Developer API
-
-WizPets registers an implementation of `com.github.cybellereaper.wizpets.api.WizPetsApi` with Bukkit's service manager during plugin enable. Retrieve it with:
+WizPets registers `com.github.cybellereaper.wizpets.api.WizPetsApi` with Bukkit's service manager during plugin enable. Retrieve it with:
 
 ```kotlin
 val api = Bukkit.getServicesManager().load(WizPetsApi::class.java)
 ```
 
-The API lets you:
-
-- Inspect and persist pet data (`storedPet`, `activePet`, `persist`).
-- Work with stored records directly through the `PetPersistence` API for clean PDC access,
-  including helpers like `loadOrCreate`, `exists`, and atomic `compute` mutations for modern PDC
-  tooling.
+The API allows you to:
+- Inspect or persist pet data via `storedPet`, `activePet`, and `persist`.
+- Use the `PetPersistence` helpers (`loadOrCreate`, `exists`, `compute`, etc.) for safe atomic access to PDC storage.
 - Summon or dismiss pets with explicit reasons for traceability.
-- Register and unregister custom talents at runtime with `registerTalent` / `unregisterTalent`.
-- Subscribe to lifecycle callbacks through `addListener` to react to summons, dismissals, and saves.
-- Drive custom models and animations through the Blockbench engine exposed via `blockbench()`, letting other plugins register new model files or create bespoke animators.
+- Register and unregister custom talents through `registerTalent` / `unregisterTalent`.
+- Subscribe to lifecycle callbacks with `addListener` to react to summons, dismissals, or saves.
+- Drive Blockbench models and animations via `blockbench()` so other plugins can register new model files or animators.
 
-Custom talents implement `PetTalent` and can manipulate stats, react to ticks, or respond to attacks. Register a talent factory to make it available to players:
+Custom talents implement `PetTalent`. Register a factory to expose a new talent:
 
 ```kotlin
 api.registerTalent(TalentFactory { MyCustomTalent() })
 ```
 
-See `src/main/kotlin/com/github/cybellereaper/wizpets/api` for the full set of developer-facing types.
+Refer to `src/main/kotlin/com/github/cybellereaper/wizpets/api` for the full set of developer-facing types and utilities.
+
+## Data Model
+Each player's pet information is serialized into their personal `PersistentDataContainer`, including:
+- Display name
+- EVs/IVs and calculated stats
+- Talent identifiers and unlock state
+- Generation, breeding count, and ability flags (mounting, flight)
+
+Data is saved whenever stats change, on logout, and during server shutdown. Any armor stands tagged by the plugin are cleaned up automatically when the server disables the plugin.
 
 ## Building
-
-Run the Gradle build to compile the plugin JAR:
+Compile the plugin using Gradle:
 
 ```bash
 ./gradlew build
 ```
 
-The compiled artifact will appear under `build/libs/`.
+The resulting JAR will be placed under `build/libs/`.
 
 ## License
-
-This project is released under the [BSD 3-Clause License](LICENSE).
+Released under the [BSD 3-Clause License](LICENSE).
