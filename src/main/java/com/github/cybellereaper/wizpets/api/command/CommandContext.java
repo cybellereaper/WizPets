@@ -30,7 +30,7 @@ public record CommandContext(Player player, List<String> arguments, WizPetsApi a
   /** Emits a stream of the currently online players. */
   public Stream<Player> onlinePlayers() {
     Collection<? extends Player> players = server.getOnlinePlayers();
-    return players == null ? Stream.empty() : players.stream().map(Player.class::cast);
+    return players.stream().map(Player.class::cast);
   }
 
   /** Attempts to resolve an online player by their exact name. */

@@ -87,10 +87,9 @@ public final class ActivePetImpl implements ActivePet {
     stand.setVisible(false);
     stand.setMarker(false);
     stand.setSmall(true);
-    if (stand.getEquipment() != null) {
+      stand.getEquipment();
       stand.getEquipment().setHelmet(new ItemStack(Material.END_ROD));
-    }
-    stand.customName(Component.text(currentRecord.displayName()));
+      stand.customName(Component.text(currentRecord.displayName()));
     stand.setCustomNameVisible(true);
     this.armorStand = stand;
 
@@ -212,8 +211,7 @@ public final class ActivePetImpl implements ActivePet {
     double base = baseStats.value(type);
     double iv = currentRecord.ivs().value(type);
     double evContribution = currentRecord.evs().value(type) / 4.0;
-    double raw = base + iv + evContribution;
-    double result = raw;
+    double result = base + iv + evContribution;
     for (PetTalent talent : currentTalents) {
       result = talent.modifyStat(this, type, result);
     }
@@ -272,10 +270,9 @@ public final class ActivePetImpl implements ActivePet {
       }
     }
     if (target != null) {
-      double damage = statValue(StatType.ATTACK) * 0.75 + statValue(StatType.MAGIC) * 0.25;
-      dealDamage(target, damage);
+      double finalDamage = statValue(StatType.ATTACK) * 0.75 + statValue(StatType.MAGIC) * 0.25;
+      dealDamage(target, finalDamage);
       Monster finalTarget = target;
-      double finalDamage = damage;
       currentTalents.forEach(talent -> talent.onAttack(this, finalTarget, finalDamage));
       attackCooldown = Math.max(2, (int) (6 - statValue(StatType.MAGIC) / 4));
     }

@@ -4,6 +4,8 @@ import com.github.cybellereaper.wizpets.api.talent.PetTalent;
 import com.github.cybellereaper.wizpets.api.talent.PetTalentDescriptor;
 import com.github.cybellereaper.wizpets.api.talent.TalentFactory;
 import com.github.cybellereaper.wizpets.api.talent.TalentRegistryView;
+import org.jetbrains.annotations.NotNull;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -101,7 +103,7 @@ public final class TalentRegistryImpl implements TalentRegistryView {
   }
 
   @Override
-  public Iterator<PetTalentDescriptor> iterator() {
+  public @NotNull Iterator<PetTalentDescriptor> iterator() {
     synchronized (monitor) {
       List<PetTalentDescriptor> descriptors = new ArrayList<>(factories.size());
       factories.values().forEach(wrapper -> descriptors.add(wrapper.descriptor));
@@ -131,19 +133,14 @@ public final class TalentRegistryImpl implements TalentRegistryView {
     }
   }
 
-  private static final class TalentFactoryWrapper implements TalentFactory {
-    private final PetTalentDescriptor descriptor;
-    private final TalentFactory delegate;
+    private record TalentFactoryWrapper(PetTalentDescriptor descriptor, TalentFactory delegate) implements TalentFactory {
+        TalentFactoryWrapper(PetTalent sample, TalentFactory delegate) {
+            this(new PetTalentDescriptor(sample.getId(), sample.getDisplayName(), sample.getDescription()), delegate);
+        }
 
-    private TalentFactoryWrapper(PetTalent sample, TalentFactory delegate) {
-      this.descriptor =
-          new PetTalentDescriptor(sample.getId(), sample.getDisplayName(), sample.getDescription());
-      this.delegate = delegate;
+        @Override
+        public PetTalent create() {
+            return delegate.create();
+        }
     }
-
-    @Override
-    public PetTalent create() {
-      return delegate.create();
-    }
-  }
 }

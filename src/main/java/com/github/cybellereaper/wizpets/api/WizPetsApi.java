@@ -17,7 +17,7 @@ public interface WizPetsApi {
     return Optional.ofNullable(storedPet(player));
   }
 
-  ActivePet summon(Player player, SummonReason reason);
+  void summon(Player player, SummonReason reason);
 
   boolean dismiss(Player player, DismissReason reason);
 

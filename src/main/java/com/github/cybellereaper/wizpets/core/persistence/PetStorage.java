@@ -100,7 +100,7 @@ public final class PetStorage {
                         .filter(trimmed -> !trimmed.isEmpty())
                         .toList())
             .map(ImmutableList::copyOf)
-            .getOrElse(() -> ImmutableList.of());
+            .getOrElse(ImmutableList::of);
 
     StatSet evs =
         new StatSet(

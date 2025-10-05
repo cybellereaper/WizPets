@@ -101,7 +101,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
   }
 
   @Override
-  public ActivePet summon(Player player, SummonReason reason) {
+  public void summon(Player player, SummonReason reason) {
     Option.of(activePets.remove(player.getUniqueId()))
         .peek(pet -> storage.save(player, pet.toRecord()))
         .peek(pet -> pet.remove(true));
@@ -115,7 +115,6 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
     storage.save(player, pet.toRecord());
     listeners.forEach(listener -> listener.onSummoned(player, pet, reason));
     plugin.getLogger().fine(() -> "Summoned pet for " + player.getName() + " via " + reason);
-    return pet;
   }
 
   @Override
