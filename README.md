@@ -51,6 +51,7 @@ val api = Bukkit.getServicesManager().load(WizPetsApi::class.java)
 The API lets you:
 
 - Inspect and persist pet data (`storedPet`, `activePet`, `persist`).
+- Work with stored records directly through the new `PetPersistence` API for clean PDC access.
 - Summon or dismiss pets with explicit reasons for traceability.
 - Register and unregister custom talents at runtime with `registerTalent` / `unregisterTalent`.
 - Subscribe to lifecycle callbacks through `addListener` to react to summons, dismissals, and saves.

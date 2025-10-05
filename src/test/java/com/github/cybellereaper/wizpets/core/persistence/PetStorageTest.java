@@ -1,6 +1,7 @@
 package com.github.cybellereaper.wizpets.core.persistence;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.cybellereaper.wizpets.api.PetRecord;
@@ -24,13 +25,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 class PetStorageTest {
+  private JavaPlugin plugin;
   private Player player;
   private PetStorage storage;
   private InMemoryContainer container;
 
   @BeforeEach
   void setUp() {
-    JavaPlugin plugin = Mockito.mock(JavaPlugin.class);
+    plugin = Mockito.mock(JavaPlugin.class);
     Mockito.when(plugin.getName()).thenReturn("wizpets-test");
     Mockito.when(plugin.namespace()).thenReturn("wizpets-test");
     storage = new PetStorage(plugin);
@@ -93,6 +95,51 @@ class PetStorageTest {
     storage.save(player, record);
     PetRecord loaded = storage.load(player).orElseThrow();
     assertTrue(loaded.talentIds().isEmpty());
+  }
+
+  @Test
+  void encodeAndDecodeRoundTripMatchesRecord() {
+    PetRecord original =
+        new PetRecord(
+            "Nebula",
+            new StatSet(11.0, 9.5, 6.25, 4.75),
+            new StatSet(3.0, 5.0, 7.0, 2.0),
+            java.util.List.of("guardian_shell"),
+            2,
+            1,
+            true,
+            false);
+
+    PersistentDataContainer encoded =
+        storage.encode(container.getAdapterContext(), original);
+    PetRecord decoded = storage.decode(encoded).orElseThrow();
+    assertEquals(original, decoded);
+  }
+
+  @Test
+  void decodeReturnsEmptyWhenNameMissing() {
+    PersistentDataContainer encoded = container.getAdapterContext().newPersistentDataContainer();
+    assertTrue(storage.decode(encoded).isEmpty());
+  }
+
+  @Test
+  void clearRemovesStoredRootKey() {
+    PetRecord record =
+        new PetRecord(
+            "Aurora",
+            StatSet.randomEV(new java.util.Random(1)),
+            StatSet.randomIV(new java.util.Random(2)),
+            java.util.List.of(),
+            1,
+            0,
+            false,
+            false);
+
+    storage.save(player, record);
+    storage.clear(player);
+
+    NamespacedKey rootKey = new NamespacedKey(plugin, "pet");
+    assertFalse(container.has(rootKey));
   }
 
   private static final class InMemoryContainer implements PersistentDataContainer {

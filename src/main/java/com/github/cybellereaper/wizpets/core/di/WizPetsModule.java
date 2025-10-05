@@ -1,5 +1,6 @@
 package com.github.cybellereaper.wizpets.core.di;
 
+import com.github.cybellereaper.wizpets.api.persistence.PetPersistence;
 import com.github.cybellereaper.wizpets.core.config.PluginConfig;
 import com.github.cybellereaper.wizpets.core.persistence.PetStorage;
 import com.github.cybellereaper.wizpets.core.talent.TalentRegistryImpl;
@@ -24,7 +25,7 @@ public final class WizPetsModule {
 
   @Provides
   @Singleton
-  static PetStorage petStorage(JavaPlugin plugin) {
+  static PetPersistence petPersistence(JavaPlugin plugin) {
     return new PetStorage(plugin);
   }
 
