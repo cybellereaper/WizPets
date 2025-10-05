@@ -36,8 +36,6 @@ public record Vector3(double x, double y, double z) {
     Objects.requireNonNull(other, "other");
     double clamped = Math.max(0.0, Math.min(1.0, t));
     return new Vector3(
-        x + (other.x - x) * clamped,
-        y + (other.y - y) * clamped,
-        z + (other.z - z) * clamped);
+        x + (other.x - x) * clamped, y + (other.y - y) * clamped, z + (other.z - z) * clamped);
   }
 }

@@ -42,7 +42,11 @@ public final class WizPetCommand implements TabExecutor {
   }
 
   @Override
-  public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
+  public boolean onCommand(
+      @NotNull CommandSender sender,
+      @NotNull Command command,
+      @NotNull String label,
+      String[] args) {
     if (!(sender instanceof Player player)) {
       sender.sendMessage("Only players can manage pets.");
       return true;
@@ -65,7 +69,10 @@ public final class WizPetCommand implements TabExecutor {
 
   @Override
   public List<String> onTabComplete(
-          @NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
+      @NotNull CommandSender sender,
+      @NotNull Command command,
+      @NotNull String alias,
+      String[] args) {
     if (!(sender instanceof Player player)) {
       return List.of();
     }

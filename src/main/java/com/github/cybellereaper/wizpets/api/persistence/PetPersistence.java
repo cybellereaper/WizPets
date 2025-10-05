@@ -71,8 +71,7 @@ public interface PetPersistence {
    * present value is persisted before the optional is returned to the caller.
    */
   Optional<PetRecord> compute(
-      PersistentDataHolder holder,
-      Function<Optional<PetRecord>, Optional<PetRecord>> operation);
+      PersistentDataHolder holder, Function<Optional<PetRecord>, Optional<PetRecord>> operation);
 
   /** Convenience overload that targets a player directly. */
   default Optional<PetRecord> compute(

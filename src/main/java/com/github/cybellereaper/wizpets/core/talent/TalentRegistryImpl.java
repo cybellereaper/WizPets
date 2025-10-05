@@ -4,8 +4,6 @@ import com.github.cybellereaper.wizpets.api.talent.PetTalent;
 import com.github.cybellereaper.wizpets.api.talent.PetTalentDescriptor;
 import com.github.cybellereaper.wizpets.api.talent.TalentFactory;
 import com.github.cybellereaper.wizpets.api.talent.TalentRegistryView;
-import org.jetbrains.annotations.NotNull;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -15,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.random.RandomGenerator;
+import org.jetbrains.annotations.NotNull;
 
 public final class TalentRegistryImpl implements TalentRegistryView {
   private final Map<String, TalentFactoryWrapper> factories = new LinkedHashMap<>();
@@ -133,14 +132,17 @@ public final class TalentRegistryImpl implements TalentRegistryView {
     }
   }
 
-    private record TalentFactoryWrapper(PetTalentDescriptor descriptor, TalentFactory delegate) implements TalentFactory {
-        TalentFactoryWrapper(PetTalent sample, TalentFactory delegate) {
-            this(new PetTalentDescriptor(sample.getId(), sample.getDisplayName(), sample.getDescription()), delegate);
-        }
-
-        @Override
-        public PetTalent create() {
-            return delegate.create();
-        }
+  private record TalentFactoryWrapper(PetTalentDescriptor descriptor, TalentFactory delegate)
+      implements TalentFactory {
+    TalentFactoryWrapper(PetTalent sample, TalentFactory delegate) {
+      this(
+          new PetTalentDescriptor(sample.getId(), sample.getDisplayName(), sample.getDescription()),
+          delegate);
     }
+
+    @Override
+    public PetTalent create() {
+      return delegate.create();
+    }
+  }
 }

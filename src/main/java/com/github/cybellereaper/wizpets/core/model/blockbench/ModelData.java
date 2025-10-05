@@ -8,7 +8,8 @@ final class ModelData {
   private final Map<String, BoneDefinition> bones;
   private final Map<String, BlockbenchAnimation> animations;
 
-  ModelData(String id, Map<String, BoneDefinition> bones, Map<String, BlockbenchAnimation> animations) {
+  ModelData(
+      String id, Map<String, BoneDefinition> bones, Map<String, BlockbenchAnimation> animations) {
     this.id = id;
     this.bones = Map.copyOf(bones);
     this.animations = Map.copyOf(animations);

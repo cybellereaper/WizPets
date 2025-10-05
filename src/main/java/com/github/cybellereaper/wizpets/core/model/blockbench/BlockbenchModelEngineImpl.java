@@ -104,11 +104,10 @@ public final class BlockbenchModelEngineImpl implements BlockbenchModelEngine {
     return new ModelData(id, bones, animations);
   }
 
-  private BlockbenchAnimation toAnimation(String modelId, String animationId, AnimationSchema schema)
-      throws IOException {
+  private BlockbenchAnimation toAnimation(
+      String modelId, String animationId, AnimationSchema schema) throws IOException {
     if (schema == null) {
-      throw new IOException(
-          "Animation '" + animationId + "' for model '" + modelId + "' was null");
+      throw new IOException("Animation '" + animationId + "' for model '" + modelId + "' was null");
     }
     Map<String, BlockbenchBoneTrack> tracks = new HashMap<>();
     if (schema.bones != null) {
@@ -153,7 +152,8 @@ public final class BlockbenchModelEngineImpl implements BlockbenchModelEngine {
     return new BlockbenchBoneTrack(rotation, position);
   }
 
-  private Vector3 toVector(String modelId, String animationId, String boneName, KeyframeSchema schema)
+  private Vector3 toVector(
+      String modelId, String animationId, String boneName, KeyframeSchema schema)
       throws IOException {
     List<Double> vector = schema.vector;
     if (vector == null || vector.size() != 3) {

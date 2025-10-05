@@ -6,8 +6,8 @@ import com.github.cybellereaper.wizpets.api.StatSet;
 import com.github.cybellereaper.wizpets.api.StatType;
 import com.github.cybellereaper.wizpets.api.model.blockbench.BlockbenchModelInstance;
 import com.github.cybellereaper.wizpets.api.talent.PetTalent;
-import com.github.cybellereaper.wizpets.core.service.PetServiceImpl;
 import com.github.cybellereaper.wizpets.core.model.blockbench.ArmorStandPoseTarget;
+import com.github.cybellereaper.wizpets.core.service.PetServiceImpl;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -92,9 +92,9 @@ public final class ActivePetImpl implements ActivePet {
     stand.setVisible(false);
     stand.setMarker(false);
     stand.setSmall(true);
-      stand.getEquipment();
-      stand.getEquipment().setHelmet(new ItemStack(Material.END_ROD));
-      stand.customName(Component.text(currentRecord.displayName()));
+    stand.getEquipment();
+    stand.getEquipment().setHelmet(new ItemStack(Material.END_ROD));
+    stand.customName(Component.text(currentRecord.displayName()));
     stand.setCustomNameVisible(true);
     this.armorStand = stand;
 

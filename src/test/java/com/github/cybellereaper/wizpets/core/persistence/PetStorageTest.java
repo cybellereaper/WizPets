@@ -113,9 +113,7 @@ class PetStorageTest {
   @Test
   void decodeReturnsEmptyWhenNameMissing() {
     assertTrue(
-        storage
-            .decode(container.getAdapterContext().newPersistentDataContainer())
-            .isEmpty());
+        storage.decode(container.getAdapterContext().newPersistentDataContainer()).isEmpty());
   }
 
   @Test
