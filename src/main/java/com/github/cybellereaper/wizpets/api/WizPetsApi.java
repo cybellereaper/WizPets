@@ -1,5 +1,6 @@
 package com.github.cybellereaper.wizpets.api;
 
+import com.github.cybellereaper.wizpets.api.persistence.PetPersistence;
 import com.github.cybellereaper.wizpets.api.talent.TalentFactory;
 import com.github.cybellereaper.wizpets.api.talent.TalentRegistryView;
 import com.github.cybellereaper.wizpets.api.timeline.PetLifecycleListener;
@@ -16,6 +17,9 @@ public interface WizPetsApi {
   default Optional<PetRecord> storedPetOptional(Player player) {
     return Optional.ofNullable(storedPet(player));
   }
+
+  /** Access the persistence facade for interacting with stored pet data. */
+  PetPersistence persistence();
 
   void summon(Player player, SummonReason reason);
 
