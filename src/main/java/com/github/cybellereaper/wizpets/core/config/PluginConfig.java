@@ -1,9 +1,12 @@
 package com.github.cybellereaper.wizpets.core.config;
 
-import lombok.NonNull;
+import java.util.Objects;
 import org.bukkit.configuration.file.FileConfiguration;
 
-public record PluginConfig(@NonNull FileConfiguration configuration) {
+public record PluginConfig(FileConfiguration configuration) {
+  public PluginConfig {
+    Objects.requireNonNull(configuration, "configuration");
+  }
   public boolean isAutoSummon() {
     return configuration.getBoolean("autosummon", true);
   }

@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.text.MessageFormat;
 import java.util.List;
+import java.util.Objects;
 import java.util.random.RandomGenerator.SplittableGenerator;
 import org.bukkit.entity.Player;
 
@@ -21,11 +22,14 @@ public final class BreedingEngine {
 
   @Inject
   public BreedingEngine(TalentRegistryImpl registry, SplittableGenerator random) {
-    this.registry = registry;
-    this.random = random;
+    this.registry = Objects.requireNonNull(registry, "registry");
+    this.random = Objects.requireNonNull(random, "random");
   }
 
   public BreedOutcome breed(Player owner, PetRecord self, PetRecord partner) {
+    Objects.requireNonNull(owner, "owner");
+    Objects.requireNonNull(self, "self");
+    Objects.requireNonNull(partner, "partner");
     int generation = Math.max(self.generation(), partner.generation()) + 1;
     SplittableGenerator branch = random.split();
     StatSet childEvs = self.evs().breedWith(partner.evs(), branch.split());
@@ -46,5 +50,10 @@ public final class BreedingEngine {
     return new BreedOutcome(childRecord, updatedPartner);
   }
 
-  public record BreedOutcome(PetRecord childRecord, PetRecord updatedPartnerRecord) {}
+  public record BreedOutcome(PetRecord childRecord, PetRecord updatedPartnerRecord) {
+    public BreedOutcome {
+      Objects.requireNonNull(childRecord, "childRecord");
+      Objects.requireNonNull(updatedPartnerRecord, "updatedPartnerRecord");
+    }
+  }
 }

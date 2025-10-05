@@ -25,7 +25,7 @@ public final class TalentRegistryImpl implements TalentRegistryView {
 
   public void register(TalentFactory factory, boolean replace) {
     Objects.requireNonNull(factory, "factory");
-    PetTalent sample = factory.create();
+    PetTalent sample = Objects.requireNonNull(factory.create(), "factory#create");
     String id = sample.getId();
     synchronized (monitor) {
       if (!replace && factories.containsKey(id)) {
@@ -36,12 +36,14 @@ public final class TalentRegistryImpl implements TalentRegistryView {
   }
 
   public void unregister(String id) {
+    Objects.requireNonNull(id, "id");
     synchronized (monitor) {
       factories.remove(id);
     }
   }
 
   public List<PetTalent> instantiate(List<String> ids) {
+    Objects.requireNonNull(ids, "ids");
     synchronized (monitor) {
       List<PetTalent> talents = new ArrayList<>(ids.size());
       for (String id : ids) {
@@ -136,13 +138,16 @@ public final class TalentRegistryImpl implements TalentRegistryView {
       implements TalentFactory {
     TalentFactoryWrapper(PetTalent sample, TalentFactory delegate) {
       this(
-          new PetTalentDescriptor(sample.getId(), sample.getDisplayName(), sample.getDescription()),
-          delegate);
+          new PetTalentDescriptor(
+              Objects.requireNonNull(sample, "sample").getId(),
+              sample.getDisplayName(),
+              sample.getDescription()),
+          Objects.requireNonNull(delegate, "delegate"));
     }
 
     @Override
     public PetTalent create() {
-      return delegate.create();
+      return Objects.requireNonNull(delegate.create(), "delegate#create");
     }
   }
 }

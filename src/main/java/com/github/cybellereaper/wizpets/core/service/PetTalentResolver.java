@@ -6,6 +6,7 @@ import com.github.cybellereaper.wizpets.core.talent.TalentRegistryImpl;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.random.RandomGenerator.SplittableGenerator;
@@ -20,13 +21,13 @@ public final class PetTalentResolver {
   @Inject
   public PetTalentResolver(
       TalentRegistryImpl registry, SplittableGenerator random, ExecutorService executor) {
-    this.registry = registry;
-    this.random = random;
-    this.executor = executor;
+    this.registry = Objects.requireNonNull(registry, "registry");
+    this.random = Objects.requireNonNull(random, "random");
+    this.executor = Objects.requireNonNull(executor, "executor");
   }
 
   public ResolvedTalents resolve(PetRecord source) {
-    PetRecord sanitized = ensureTalentIds(source);
+    PetRecord sanitized = ensureTalentIds(Objects.requireNonNull(source, "source"));
     List<PetTalent> talents =
         CompletableFuture.supplyAsync(() -> registry.instantiate(sanitized.talentIds()), executor)
             .join();
@@ -34,6 +35,7 @@ public final class PetTalentResolver {
   }
 
   private PetRecord ensureTalentIds(PetRecord record) {
+    Objects.requireNonNull(record, "record");
     List<PetTalent> preview = registry.instantiate(record.talentIds());
     if (preview.size() != record.talentIds().size() || preview.isEmpty()) {
       SplittableGenerator branch = random.split();
@@ -42,5 +44,10 @@ public final class PetTalentResolver {
     return record;
   }
 
-  public record ResolvedTalents(PetRecord record, List<PetTalent> talents) {}
+  public record ResolvedTalents(PetRecord record, List<PetTalent> talents) {
+    public ResolvedTalents {
+      Objects.requireNonNull(record, "record");
+      talents = List.copyOf(Objects.requireNonNull(talents, "talents"));
+    }
+  }
 }

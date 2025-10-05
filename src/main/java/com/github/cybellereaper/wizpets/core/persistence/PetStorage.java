@@ -6,9 +6,9 @@ import com.github.cybellereaper.wizpets.api.persistence.PetPersistence;
 import com.google.common.collect.ImmutableList;
 import io.vavr.control.Option;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
-import lombok.NonNull;
 import org.bukkit.NamespacedKey;
 import org.bukkit.persistence.PersistentDataAdapterContext;
 import org.bukkit.persistence.PersistentDataContainer;
@@ -34,106 +34,118 @@ public final class PetStorage implements PetPersistence {
   private final NamespacedKey ivDefenseKey;
   private final NamespacedKey ivMagicKey;
 
-  public PetStorage(@NonNull JavaPlugin plugin) {
-    rootKey = new NamespacedKey(plugin, "pet");
-    nameKey = new NamespacedKey(plugin, "name");
-    generationKey = new NamespacedKey(plugin, "generation");
-    breedKey = new NamespacedKey(plugin, "breed_count");
-    talentsKey = new NamespacedKey(plugin, "talents");
-    mountKey = new NamespacedKey(plugin, "mount_unlocked");
-    flightKey = new NamespacedKey(plugin, "flight_unlocked");
-    evHealthKey = new NamespacedKey(plugin, "ev_health");
-    evAttackKey = new NamespacedKey(plugin, "ev_attack");
-    evDefenseKey = new NamespacedKey(plugin, "ev_defense");
-    evMagicKey = new NamespacedKey(plugin, "ev_magic");
-    ivHealthKey = new NamespacedKey(plugin, "iv_health");
-    ivAttackKey = new NamespacedKey(plugin, "iv_attack");
-    ivDefenseKey = new NamespacedKey(plugin, "iv_defense");
-    ivMagicKey = new NamespacedKey(plugin, "iv_magic");
+  public PetStorage(JavaPlugin plugin) {
+    JavaPlugin safePlugin = Objects.requireNonNull(plugin, "plugin");
+    rootKey = new NamespacedKey(safePlugin, "pet");
+    nameKey = new NamespacedKey(safePlugin, "name");
+    generationKey = new NamespacedKey(safePlugin, "generation");
+    breedKey = new NamespacedKey(safePlugin, "breed_count");
+    talentsKey = new NamespacedKey(safePlugin, "talents");
+    mountKey = new NamespacedKey(safePlugin, "mount_unlocked");
+    flightKey = new NamespacedKey(safePlugin, "flight_unlocked");
+    evHealthKey = new NamespacedKey(safePlugin, "ev_health");
+    evAttackKey = new NamespacedKey(safePlugin, "ev_attack");
+    evDefenseKey = new NamespacedKey(safePlugin, "ev_defense");
+    evMagicKey = new NamespacedKey(safePlugin, "ev_magic");
+    ivHealthKey = new NamespacedKey(safePlugin, "iv_health");
+    ivAttackKey = new NamespacedKey(safePlugin, "iv_attack");
+    ivDefenseKey = new NamespacedKey(safePlugin, "iv_defense");
+    ivMagicKey = new NamespacedKey(safePlugin, "iv_magic");
   }
 
   @Override
-  public Optional<PetRecord> load(@NonNull PersistentDataHolder holder) {
-    return decodeFromParent(holder.getPersistentDataContainer());
+  public Optional<PetRecord> load(PersistentDataHolder holder) {
+    PersistentDataHolder safeHolder = Objects.requireNonNull(holder, "holder");
+    return decodeFromParent(safeHolder.getPersistentDataContainer());
   }
 
   @Override
-  public void save(@NonNull PersistentDataHolder holder, @NonNull PetRecord record) {
-    PersistentDataContainer parent = holder.getPersistentDataContainer();
-    PersistentDataContainer container = encode(parent.getAdapterContext(), record);
+  public void save(PersistentDataHolder holder, PetRecord record) {
+    PersistentDataHolder safeHolder = Objects.requireNonNull(holder, "holder");
+    PetRecord safeRecord = Objects.requireNonNull(record, "record");
+    PersistentDataContainer parent = safeHolder.getPersistentDataContainer();
+    PersistentDataContainer container = encode(parent.getAdapterContext(), safeRecord);
     parent.set(rootKey, PersistentDataType.TAG_CONTAINER, container);
   }
 
   @Override
-  public void clear(@NonNull PersistentDataHolder holder) {
-    holder.getPersistentDataContainer().remove(rootKey);
+  public void clear(PersistentDataHolder holder) {
+    Objects.requireNonNull(holder, "holder").getPersistentDataContainer().remove(rootKey);
   }
 
   @Override
-  public boolean exists(@NonNull PersistentDataHolder holder) {
-    return holder.getPersistentDataContainer().has(rootKey, PersistentDataType.TAG_CONTAINER);
+  public boolean exists(PersistentDataHolder holder) {
+    return Objects.requireNonNull(holder, "holder")
+        .getPersistentDataContainer()
+        .has(rootKey, PersistentDataType.TAG_CONTAINER);
   }
 
   @Override
   public Optional<PetRecord> compute(
-      @NonNull PersistentDataHolder holder,
-      @NonNull Function<Optional<PetRecord>, Optional<PetRecord>> operation) {
-    PersistentDataContainer parent = holder.getPersistentDataContainer();
+      PersistentDataHolder holder,
+      Function<Optional<PetRecord>, Optional<PetRecord>> operation) {
+    PersistentDataHolder safeHolder = Objects.requireNonNull(holder, "holder");
+    Function<Optional<PetRecord>, Optional<PetRecord>> safeOperation =
+        Objects.requireNonNull(operation, "operation");
+    PersistentDataContainer parent = safeHolder.getPersistentDataContainer();
     Optional<PetRecord> current = decodeFromParent(parent);
-    Optional<PetRecord> result = operation.apply(current);
-    if (result == null) {
-      throw new NullPointerException("Operation must not return null");
-    }
+    Optional<PetRecord> result = Objects.requireNonNull(safeOperation.apply(current));
     if (result.isPresent()) {
-      save(holder, result.get());
+      save(safeHolder, result.get());
     } else {
-      clear(holder);
+      clear(safeHolder);
     }
     return result;
   }
 
   @Override
   public PersistentDataContainer encode(
-      @NonNull PersistentDataAdapterContext context, @NonNull PetRecord record) {
-    PersistentDataContainer container = context.newPersistentDataContainer();
+      PersistentDataAdapterContext context, PetRecord record) {
+    PersistentDataAdapterContext safeContext = Objects.requireNonNull(context, "context");
+    PetRecord safeRecord = Objects.requireNonNull(record, "record");
+    PersistentDataContainer container = safeContext.newPersistentDataContainer();
 
-    container.set(nameKey, PersistentDataType.STRING, record.displayName());
-    container.set(generationKey, PersistentDataType.INTEGER, record.generation());
-    container.set(breedKey, PersistentDataType.INTEGER, record.breedCount());
-    container.set(talentsKey, PersistentDataType.STRING, String.join(";", record.talentIds()));
-    container.set(mountKey, PersistentDataType.BYTE, asByte(record.mountUnlocked()));
-    container.set(flightKey, PersistentDataType.BYTE, asByte(record.flightUnlocked()));
+    container.set(nameKey, PersistentDataType.STRING, safeRecord.displayName());
+    container.set(generationKey, PersistentDataType.INTEGER, safeRecord.generation());
+    container.set(breedKey, PersistentDataType.INTEGER, safeRecord.breedCount());
+    container.set(talentsKey, PersistentDataType.STRING, String.join(";", safeRecord.talentIds()));
+    container.set(mountKey, PersistentDataType.BYTE, asByte(safeRecord.mountUnlocked()));
+    container.set(flightKey, PersistentDataType.BYTE, asByte(safeRecord.flightUnlocked()));
 
-    container.set(evHealthKey, PersistentDataType.DOUBLE, record.evs().health());
-    container.set(evAttackKey, PersistentDataType.DOUBLE, record.evs().attack());
-    container.set(evDefenseKey, PersistentDataType.DOUBLE, record.evs().defense());
-    container.set(evMagicKey, PersistentDataType.DOUBLE, record.evs().magic());
+    container.set(evHealthKey, PersistentDataType.DOUBLE, safeRecord.evs().health());
+    container.set(evAttackKey, PersistentDataType.DOUBLE, safeRecord.evs().attack());
+    container.set(evDefenseKey, PersistentDataType.DOUBLE, safeRecord.evs().defense());
+    container.set(evMagicKey, PersistentDataType.DOUBLE, safeRecord.evs().magic());
 
-    container.set(ivHealthKey, PersistentDataType.DOUBLE, record.ivs().health());
-    container.set(ivAttackKey, PersistentDataType.DOUBLE, record.ivs().attack());
-    container.set(ivDefenseKey, PersistentDataType.DOUBLE, record.ivs().defense());
-    container.set(ivMagicKey, PersistentDataType.DOUBLE, record.ivs().magic());
+    container.set(ivHealthKey, PersistentDataType.DOUBLE, safeRecord.ivs().health());
+    container.set(ivAttackKey, PersistentDataType.DOUBLE, safeRecord.ivs().attack());
+    container.set(ivDefenseKey, PersistentDataType.DOUBLE, safeRecord.ivs().defense());
+    container.set(ivMagicKey, PersistentDataType.DOUBLE, safeRecord.ivs().magic());
 
     return container;
   }
 
   @Override
-  public Optional<PetRecord> decode(@NonNull PersistentDataContainer container) {
-    return Option.of(container.get(nameKey, PersistentDataType.STRING))
+  public Optional<PetRecord> decode(PersistentDataContainer container) {
+    PersistentDataContainer safeContainer = Objects.requireNonNull(container, "container");
+    return Option.of(safeContainer.get(nameKey, PersistentDataType.STRING))
         .filter(name -> !name.isBlank())
-        .map(name -> buildRecord(container, name))
+        .map(name -> buildRecord(safeContainer, name))
         .toJavaOptional();
   }
 
   private Optional<PetRecord> decodeFromParent(PersistentDataContainer parent) {
-    return Option.of(parent.get(rootKey, PersistentDataType.TAG_CONTAINER))
+    PersistentDataContainer safeParent = Objects.requireNonNull(parent, "parent");
+    return Option.of(safeParent.get(rootKey, PersistentDataType.TAG_CONTAINER))
         .flatMap(container -> Option.ofOptional(decode(container)))
         .toJavaOptional();
   }
 
   private PetRecord buildRecord(PersistentDataContainer container, String name) {
+    PersistentDataContainer safeContainer = Objects.requireNonNull(container, "container");
+    Objects.requireNonNull(name, "name");
     List<String> talents =
-        Option.of(container.get(talentsKey, PersistentDataType.STRING))
+        Option.of(safeContainer.get(talentsKey, PersistentDataType.STRING))
             .filter(raw -> !raw.isBlank())
             .map(
                 raw ->
@@ -146,26 +158,27 @@ public final class PetStorage implements PetPersistence {
 
     StatSet evs =
         new StatSet(
-            getDouble(container, evHealthKey),
-            getDouble(container, evAttackKey),
-            getDouble(container, evDefenseKey),
-            getDouble(container, evMagicKey));
+            getDouble(safeContainer, evHealthKey),
+            getDouble(safeContainer, evAttackKey),
+            getDouble(safeContainer, evDefenseKey),
+            getDouble(safeContainer, evMagicKey));
 
     StatSet ivs =
         new StatSet(
-            getDouble(container, ivHealthKey),
-            getDouble(container, ivAttackKey),
-            getDouble(container, ivDefenseKey),
-            getDouble(container, ivMagicKey));
+            getDouble(safeContainer, ivHealthKey),
+            getDouble(safeContainer, ivAttackKey),
+            getDouble(safeContainer, ivDefenseKey),
+            getDouble(safeContainer, ivMagicKey));
 
     int generation =
-        Option.of(container.get(generationKey, PersistentDataType.INTEGER)).getOrElse(1);
-    int breedCount = Option.of(container.get(breedKey, PersistentDataType.INTEGER)).getOrElse(0);
+        Option.of(safeContainer.get(generationKey, PersistentDataType.INTEGER)).getOrElse(1);
+    int breedCount =
+        Option.of(safeContainer.get(breedKey, PersistentDataType.INTEGER)).getOrElse(0);
     boolean mountUnlocked =
-        Option.of(container.get(mountKey, PersistentDataType.BYTE))
+        Option.of(safeContainer.get(mountKey, PersistentDataType.BYTE))
             .exists(value -> value == (byte) 1);
     boolean flightUnlocked =
-        Option.of(container.get(flightKey, PersistentDataType.BYTE))
+        Option.of(safeContainer.get(flightKey, PersistentDataType.BYTE))
             .exists(value -> value == (byte) 1);
 
     return new PetRecord(

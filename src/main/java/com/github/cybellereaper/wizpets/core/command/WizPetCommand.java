@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Server;
@@ -35,8 +36,8 @@ public final class WizPetCommand implements TabExecutor {
   private final Map<String, CommandRegistration> registry;
 
   public WizPetCommand(WizPetsApi api, Server server) {
-    this.api = api;
-    this.server = server;
+    this.api = Objects.requireNonNull(api, "api");
+    this.server = Objects.requireNonNull(server, "server");
     this.registrations = buildRegistrations();
     this.registry = indexRegistrations(registrations);
   }
@@ -96,15 +97,19 @@ public final class WizPetCommand implements TabExecutor {
   }
 
   private CommandRegistration lookup(String[] args) {
+    Objects.requireNonNull(args, "args");
     String key = args.length == 0 ? "help" : CommandContext.lowerKey(args[0]);
     return registry.get(key);
   }
 
   private static boolean startsWith(String option, String prefix) {
+    Objects.requireNonNull(option, "option");
+    Objects.requireNonNull(prefix, "prefix");
     return option.regionMatches(true, 0, prefix, 0, prefix.length());
   }
 
   private static List<String> tailArguments(String[] args) {
+    Objects.requireNonNull(args, "args");
     if (args.length <= 1) {
       return List.of();
     }
@@ -137,17 +142,20 @@ public final class WizPetCommand implements TabExecutor {
   }
 
   private Map<String, CommandRegistration> indexRegistrations(List<CommandRegistration> commands) {
+    List<CommandRegistration> safeCommands = Objects.requireNonNull(commands, "commands");
     Map<String, CommandRegistration> map = new LinkedHashMap<>();
-    for (CommandRegistration registration : commands) {
+    for (CommandRegistration registration : safeCommands) {
       map.put(registration.name(), registration);
     }
-    map.put("?", commands.getFirst());
+    map.put("?", safeCommands.getFirst());
     return Map.copyOf(map);
   }
 
   private record CommandRegistration(String name, String description, CommandAction action) {
     CommandRegistration {
-      name = CommandContext.lowerKey(name);
+      name = CommandContext.lowerKey(Objects.requireNonNull(name, "name"));
+      Objects.requireNonNull(description, "description");
+      Objects.requireNonNull(action, "action");
     }
   }
 
@@ -157,7 +165,7 @@ public final class WizPetCommand implements TabExecutor {
     private final List<CommandRegistration> commands;
 
     HelpAction(List<CommandRegistration> commands) {
-      this.commands = commands;
+      this.commands = Objects.requireNonNull(commands, "commands");
     }
 
     @Override
@@ -179,6 +187,7 @@ public final class WizPetCommand implements TabExecutor {
     }
 
     private String formatLine(CommandRegistration registration) {
+      Objects.requireNonNull(registration, "registration");
       return "§e/wizpet " + registration.name() + " §7- " + registration.description();
     }
   }
@@ -220,6 +229,8 @@ public final class WizPetCommand implements TabExecutor {
     }
 
     private boolean displayStats(CommandContext context, ActivePet pet) {
+      Objects.requireNonNull(context, "context");
+      Objects.requireNonNull(pet, "pet");
       context.reply("§a" + pet.getRecord().displayName() + " Stats:");
       pet.statBreakdown()
           .forEach(
@@ -247,6 +258,8 @@ public final class WizPetCommand implements TabExecutor {
     }
 
     private boolean displayTalents(CommandContext context, ActivePet pet) {
+      Objects.requireNonNull(context, "context");
+      Objects.requireNonNull(pet, "pet");
       context.reply("§d" + pet.getRecord().displayName() + " Talents:");
       for (PetTalent talent : pet.getTalents()) {
         context.reply("§7- §d" + talent.getDisplayName() + "§7: " + talent.getDescription());
@@ -332,6 +345,8 @@ public final class WizPetCommand implements TabExecutor {
     }
 
     private boolean breed(CommandContext context, Player partner) {
+      Objects.requireNonNull(context, "context");
+      Objects.requireNonNull(partner, "partner");
       api.breed(context.player(), partner);
       context.reply("§dYour pet egg hums with new potential.");
       partner.sendMessage(

@@ -4,6 +4,7 @@ import com.github.cybellereaper.wizpets.api.WizPetsApi;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 import net.kyori.adventure.text.Component;
@@ -17,7 +18,10 @@ import org.bukkit.entity.Player;
 public record CommandContext(Player player, List<String> arguments, WizPetsApi api, Server server) {
 
   public CommandContext {
-    arguments = List.copyOf(arguments);
+    player = Objects.requireNonNull(player, "player");
+    api = Objects.requireNonNull(api, "api");
+    server = Objects.requireNonNull(server, "server");
+    arguments = List.copyOf(Objects.requireNonNull(arguments, "arguments"));
   }
 
   /** Returns the argument at the given index or {@link Optional#empty()} if missing. */
@@ -55,6 +59,6 @@ public record CommandContext(Player player, List<String> arguments, WizPetsApi a
 
   /** Normalises a string to lower-case for key comparisons. */
   public static String lowerKey(String raw) {
-    return raw.toLowerCase(Locale.ROOT);
+    return Objects.requireNonNull(raw, "raw").toLowerCase(Locale.ROOT);
   }
 }

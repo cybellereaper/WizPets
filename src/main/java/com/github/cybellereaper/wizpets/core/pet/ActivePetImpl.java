@@ -49,7 +49,8 @@ public final class ActivePetImpl implements ActivePet {
     this.service = Objects.requireNonNull(service, "service");
     this.owner = Objects.requireNonNull(owner, "owner");
     this.currentRecord = Objects.requireNonNull(initialRecord, "initialRecord");
-    this.currentTalents = List.copyOf(initialTalents);
+    this.currentTalents =
+        List.copyOf(Objects.requireNonNull(initialTalents, "initialTalents"));
   }
 
   @Override
@@ -82,6 +83,7 @@ public final class ActivePetImpl implements ActivePet {
   }
 
   public void spawn(Location location) {
+    Objects.requireNonNull(location, "location");
     Location spawnLocation = location.clone();
     World world = spawnLocation.getWorld();
     if (world == null) {
@@ -109,7 +111,7 @@ public final class ActivePetImpl implements ActivePet {
 
   public void update(PetRecord record, List<PetTalent> talents) {
     this.currentRecord = Objects.requireNonNull(record, "record");
-    this.currentTalents = List.copyOf(talents);
+    this.currentTalents = List.copyOf(Objects.requireNonNull(talents, "talents"));
     if (armorStand != null) {
       armorStand.customName(Component.text(record.displayName()));
       armorStand.setCustomNameVisible(true);

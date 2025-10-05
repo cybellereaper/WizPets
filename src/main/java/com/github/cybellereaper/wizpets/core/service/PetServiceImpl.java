@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -70,15 +71,15 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
       @NonNull BreedingEngine breedingEngine,
       @NonNull SplittableGenerator random,
       @NonNull ExecutorService executor) {
-    this.plugin = plugin;
-    this.config = config;
-    this.storage = storage;
-    this.registry = registry;
-    this.talentResolver = talentResolver;
-    this.breedingEngine = breedingEngine;
-    this.blockbench = blockbench;
-    this.random = random;
-    this.executor = executor;
+    this.plugin = Objects.requireNonNull(plugin, "plugin");
+    this.config = Objects.requireNonNull(config, "config");
+    this.storage = Objects.requireNonNull(storage, "storage");
+    this.registry = Objects.requireNonNull(registry, "registry");
+    this.talentResolver = Objects.requireNonNull(talentResolver, "talentResolver");
+    this.breedingEngine = Objects.requireNonNull(breedingEngine, "breedingEngine");
+    this.blockbench = Objects.requireNonNull(blockbench, "blockbench");
+    this.random = Objects.requireNonNull(random, "random");
+    this.executor = Objects.requireNonNull(executor, "executor");
     registerDefaults();
     plugin
         .getServer()
@@ -106,16 +107,20 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
 
   @Override
   public ActivePet activePet(Player player) {
+    Objects.requireNonNull(player, "player");
     return activePets.get(player.getUniqueId());
   }
 
   @Override
   public PetRecord storedPet(Player player) {
+    Objects.requireNonNull(player, "player");
     return storage.load(player).orElse(null);
   }
 
   @Override
   public void summon(Player player, SummonReason reason) {
+    Objects.requireNonNull(player, "player");
+    Objects.requireNonNull(reason, "reason");
     Option.of(activePets.remove(player.getUniqueId()))
         .peek(pet -> storage.save(player, pet.toRecord()))
         .peek(pet -> pet.remove(true));
@@ -132,14 +137,19 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
 
   @Override
   public boolean dismiss(Player player, DismissReason reason) {
+    Objects.requireNonNull(player, "player");
+    Objects.requireNonNull(reason, "reason");
     return dismiss(player, reason, reason == DismissReason.PLUGIN_DISABLE);
   }
 
   public void dismiss(Player player, boolean internal) {
+    Objects.requireNonNull(player, "player");
     dismiss(player, internal ? DismissReason.PLAYER_QUIT : DismissReason.MANUAL, internal);
   }
 
   private boolean dismiss(Player player, DismissReason reason, boolean persistFlight) {
+    Objects.requireNonNull(player, "player");
+    Objects.requireNonNull(reason, "reason");
     ActivePetImpl pet = activePets.remove(player.getUniqueId());
     if (pet == null) {
       return false;
@@ -154,6 +164,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
 
   @Override
   public void persist(Player player) {
+    Objects.requireNonNull(player, "player");
     ActivePetImpl pet = activePets.get(player.getUniqueId());
     if (pet == null) {
       return;
@@ -170,28 +181,29 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
 
   @Override
   public void registerTalent(TalentFactory factory, boolean replace) {
-    registry.register(factory, replace);
+    registry.register(Objects.requireNonNull(factory, "factory"), replace);
     refreshActivePets();
   }
 
   @Override
   public void unregisterTalent(String id) {
-    registry.unregister(id);
+    registry.unregister(Objects.requireNonNull(id, "id"));
     refreshActivePets();
   }
 
   @Override
   public void addListener(PetLifecycleListener listener) {
-    listeners.add(listener);
+    listeners.add(Objects.requireNonNull(listener, "listener"));
   }
 
   @Override
   public void removeListener(PetLifecycleListener listener) {
-    listeners.remove(listener);
+    listeners.remove(Objects.requireNonNull(listener, "listener"));
   }
 
   @Override
   public boolean mount(Player player) {
+    Objects.requireNonNull(player, "player");
     ActivePetImpl pet = activePets.get(player.getUniqueId());
     if (pet == null) {
       return false;
@@ -205,6 +217,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
 
   @Override
   public boolean dismount(Player player) {
+    Objects.requireNonNull(player, "player");
     ActivePetImpl pet = activePets.get(player.getUniqueId());
     if (pet == null) {
       return false;
@@ -218,6 +231,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
 
   @Override
   public boolean enableFlight(Player player) {
+    Objects.requireNonNull(player, "player");
     ActivePetImpl pet = activePets.get(player.getUniqueId());
     if (pet == null) {
       return false;
@@ -231,6 +245,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
 
   @Override
   public boolean disableFlight(Player player) {
+    Objects.requireNonNull(player, "player");
     ActivePetImpl pet = activePets.get(player.getUniqueId());
     if (pet == null) {
       return false;
@@ -268,6 +283,8 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
 
   @Override
   public void breed(Player player, Player partner) {
+    Objects.requireNonNull(player, "player");
+    Objects.requireNonNull(partner, "partner");
     PetRecord playerRecord = storage.loadOrCreate(player, () -> createNewRecord(player));
     PetRecord partnerRecord = storage.load(partner).orElse(null);
     if (partnerRecord == null) {
@@ -295,6 +312,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
 
   @Override
   public List<String> debugLines(Player player) {
+    Objects.requireNonNull(player, "player");
     return storage
         .load(player)
         .map(
@@ -316,6 +334,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
   }
 
   private String buildStatsSummary(PetRecord record) {
+    Objects.requireNonNull(record, "record");
     return Seq.of(StatType.values())
         .map(
             type ->
@@ -329,6 +348,7 @@ public final class PetServiceImpl implements WizPetsApi, Listener, AutoCloseable
   }
 
   private PetRecord createNewRecord(Player player) {
+    Objects.requireNonNull(player, "player");
     SplittableGenerator branch = random.split();
     PetRecord record =
         new PetRecord(
