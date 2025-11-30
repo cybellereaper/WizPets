@@ -66,15 +66,19 @@ public final class TypeChecker {
   }
 
   private void visitLetDeclaration(LetDeclaration declaration) {
-    NovaType valueType = typeOf(declaration.expression(), globals);
-    Optional<TypeReference> annotation = declaration.type();
-    if (annotation.isPresent()) {
-      NovaType expected = resolve(annotation.get());
-      ensureAssignable(
-          expected, valueType, "Let binding type mismatch for " + declaration.name());
-      valueType = expected;
-    }
-    globals.defineValue(declaration.name(), valueType);
+    NovaType inferred = typeOf(declaration.expression(), globals);
+    NovaType finalType =
+        declaration
+            .type()
+            .map(
+                annotation -> {
+                  NovaType expected = resolve(annotation);
+                  ensureAssignable(
+                      expected, inferred, "Let binding type mismatch for " + declaration.name());
+                  return expected;
+                })
+            .orElse(inferred);
+    globals.defineValue(declaration.name(), finalType);
   }
 
   private void visitFunctionDeclaration(FunctionDeclaration declaration) {
