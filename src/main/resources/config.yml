@@ -4,4 +4,4 @@ messages:
   flightUnlock: "§3Your pet lifts you into the skies!"
 defaults:
   displayName: "{player}'s Familiar"
-  modelId: "wizpet_default"
+  modelId: "noblepet_default"

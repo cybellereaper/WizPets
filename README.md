@@ -1,6 +1,6 @@
-# WizPets
+# NoblePets
 
-WizPets is a Paper/Spigot plugin that gives every player a loyal magical companion. Pets orbit their owner, heal, fight, fly, and even act as living mounts, all while their data is stored safely inside Bukkit's Persistent Data Containers (PDCs). The project has been rebuilt around a modular service architecture, exposing an official API so other plugins can extend every part of the experience.
+NoblePets is a Paper/Spigot plugin that gives every player a loyal magical companion. Pets orbit their owner, heal, fight, fly, and even act as living mounts, all while their data is stored safely inside Bukkit's Persistent Data Containers (PDCs). The project has been rebuilt around a modular service architecture, exposing an official API so other plugins can extend every part of the experience.
 
 ## Table of Contents
 - [Features](#features)
@@ -16,28 +16,28 @@ WizPets is a Paper/Spigot plugin that gives every player a loyal magical compani
 - **Breeding system** for combining two pets into a higher-generation companion with blended stats and inherited talents.
 - **Mounting and flight** so players can ride their pet and unlock aerial assistance.
 - **Automated cleanup** that removes tagged armor stands on disconnect and shutdown.
-- **Debug utilities** such as `/wizpet debug` and rich logging to inspect pet lifecycle events.
+- **Debug utilities** such as `/noblepet debug` and rich logging to inspect pet lifecycle events.
 - **Modern Blockbench animations** for all idle and combat poses, powered by a reusable model engine.
 
 ## Commands
 | Command | Description |
 | --- | --- |
-| `/wizpet summon` | Summon or respawn the active pet. |
-| `/wizpet dismiss` | Send the current pet away. |
-| `/wizpet stats` | Display calculated stats for the active pet. |
-| `/wizpet talents` | List unlocked talents. |
-| `/wizpet mount` | Mount and ride the pet. |
-| `/wizpet dismount` | Dismount from the pet. |
-| `/wizpet fly` | Toggle assisted flight once unlocked. |
-| `/wizpet land` | Disable flight and land safely. |
-| `/wizpet breed <player>` | Breed with another player's active pet. |
-| `/wizpet debug` | Inspect stored pet data for diagnostics. |
+| `/noblepet summon` | Summon or respawn the active pet. |
+| `/noblepet dismiss` | Send the current pet away. |
+| `/noblepet stats` | Display calculated stats for the active pet. |
+| `/noblepet talents` | List unlocked talents. |
+| `/noblepet mount` | Mount and ride the pet. |
+| `/noblepet dismount` | Dismount from the pet. |
+| `/noblepet fly` | Toggle assisted flight once unlocked. |
+| `/noblepet land` | Disable flight and land safely. |
+| `/noblepet breed <player>` | Breed with another player's active pet. |
+| `/noblepet debug` | Inspect stored pet data for diagnostics. |
 
 ## Developer API
-WizPets registers `com.github.cybellereaper.wizpets.api.WizPetsApi` with Bukkit's service manager during plugin enable. Retrieve it with:
+NoblePets registers `com.github.cybellereaper.noblepets.api.NoblePetsApi` with Bukkit's service manager during plugin enable. Retrieve it with:
 
 ```kotlin
-val api = Bukkit.getServicesManager().load(WizPetsApi::class.java)
+val api = Bukkit.getServicesManager().load(NoblePetsApi::class.java)
 ```
 
 The API allows you to:
@@ -54,7 +54,7 @@ Custom talents implement `PetTalent`. Register a factory to expose a new talent:
 api.registerTalent(TalentFactory { MyCustomTalent() })
 ```
 
-Refer to `src/main/kotlin/com/github/cybellereaper/wizpets/api` for the full set of developer-facing types and utilities.
+Refer to `src/main/kotlin/com/github/cybellereaper/noblepets/api` for the full set of developer-facing types and utilities.
 
 ## Data Model
 Each player's pet information is serialized into their personal `PersistentDataContainer`, including:
